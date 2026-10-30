@@ -12,8 +12,8 @@
         .header-bg { background: linear-gradient(135deg, #0d6efd, #0a58ca); color: white; border-radius: 12px 12px 0 0; padding: 20px; }
         .table-hover tbody tr:hover { background-color: #f1f5f9; }
         .btn-action { margin: 2px; }
-        /* 隱密員編：改用 text + CSS 遮罩，防止 Chrome 跳出高強度密碼 */
-        .masked-input { -webkit-text-security: disc; text-security: disc; }
+        /* 使用標籤樣式將員編遮罩，徹底避開 Chrome 密碼表單偵測引擎 */
+        .mask-text { -webkit-text-security: disc !important; text-security: disc !important; }
     </style>
 </head>
 <body class="py-4">
@@ -27,12 +27,12 @@
                             <h5 class="mb-0">會議室 (315) 使用登記系統</h5>
                         </div>
                         <button class="btn btn-light text-primary font-weight-bold mt-2 mt-md-0" onclick="copyCalendarUrl()">
-                            <i class="bi bi-calendar-plus me-1"></i>訂閱 315 全局日曆
+                            <i class="bi bi-calendar-plus me-1"></i>複製 Google 日曆訂閱網址
                         </button>
                     </div>
                     <div class="card-body p-4">
                         <h5 class="card-title text-primary mb-3"><i class="bi bi-pencil-square me-2"></i>預約登記表單</h5>
-                        <form id="bookingForm" autocomplete="off">
+                        <form id="bookingForm" action="javascript:void(0);" autocomplete="off">
                             <input type="hidden" id="bookingId">
                             <input type="hidden" id="isUpdate" value="false">
                             
@@ -48,8 +48,8 @@
                                 <div class="col-md-3">
                                     <label class="form-label">員工編號 <span class="text-danger">*</span></label>
                                     <div class="input-group">
-                                        <!-- 使用 text 屬性配合 masked-input，徹底防禦 Chrome 自動跳高強度密碼 -->
-                                        <input type="text" class="form-control masked-input" id="empId" placeholder="請手動輸入員編" required autocomplete="off" name="emp_id_no_autofill">
+                                        <!-- 去除任何 emp/pass 關鍵字，徹底防禦 Chrome 自動跳高強度密碼 -->
+                                        <input type="text" class="form-control mask-text" id="x_user_code_no_pass" placeholder="手動輸入員編" required autocomplete="off" name="x_user_code_no_pass">
                                         <button class="btn btn-outline-secondary" type="button" id="toggleEmpId">
                                             <i class="bi bi-eye" id="eyeIcon"></i>
                                         </button>
@@ -83,9 +83,17 @@
                                 </div>
                             </div>
 
-                            <div class="mt-4 text-end">
-                                <button type="button" class="btn btn-secondary me-2" id="btnReset" onclick="resetForm()">重設清空</button>
-                                <button type="submit" class="btn btn-primary px-4" id="btnSubmit">確認送出登記</button>
+                            <div class="mt-4 d-flex justify-content-between align-items-center flex-wrap">
+                                <div class="form-check me-3">
+                                    <input class="form-check-input" type="checkbox" id="autoAddToGCal" checked>
+                                    <label class="form-check-label text-muted" for="autoAddToGCal">
+                                        登記成功後自動開啟頁面加到我的 Google 日曆
+                                    </label>
+                                </div>
+                                <div>
+                                    <button type="button" class="btn btn-secondary me-2" id="btnReset" onclick="resetForm()">重設清空</button>
+                                    <button type="submit" class="btn btn-primary px-4" id="btnSubmit">確認送出登記</button>
+                                </div>
                             </div>
                         </form>
                     </div>
@@ -127,7 +135,7 @@
                 </div>
                 <div class="modal-body">
                     <p id="verifyMsg">請輸入您的員工編號以執行此操作：</p>
-                    <input type="text" class="form-control masked-input" id="verifyEmpId" placeholder="輸入員編" autocomplete="off">
+                    <input type="text" class="form-control mask-text" id="verifyEmpId" placeholder="輸入員編" autocomplete="off" name="verify_emp_id_no_pass">
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
@@ -151,13 +159,13 @@
             });
 
             document.getElementById('toggleEmpId').addEventListener('click', () => {
-                const empInput = document.getElementById('empId');
+                const empInput = document.getElementById('x_user_code_no_pass');
                 const eyeIcon = document.getElementById('eyeIcon');
-                if (empInput.classList.contains('masked-input')) {
-                    empInput.classList.remove('masked-input');
+                if (empInput.classList.contains('mask-text')) {
+                    empInput.classList.remove('mask-text');
                     eyeIcon.className = 'bi bi-eye-slash';
                 } else {
-                    empInput.classList.add('masked-input');
+                    empInput.classList.add('mask-text');
                     eyeIcon.className = 'bi bi-eye';
                 }
             });
@@ -166,7 +174,7 @@
         });
 
         function loadBookings() {
-            fetch('/api/bookings')
+            fetch('/api/bookings?t=' + Date.now())
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
@@ -205,7 +213,7 @@
                 id: document.getElementById('bookingId').value || 'b_' + Date.now(),
                 title: document.getElementById('title').value,
                 applicant: document.getElementById('applicant').value,
-                empId: document.getElementById('empId').value,
+                empId: document.getElementById('x_user_code_no_pass').value,
                 dept: document.getElementById('dept').value,
                 startDate: document.getElementById('startDate').value,
                 startTime: document.getElementById('startTime').value,
@@ -222,16 +230,14 @@
             })
             .then(res => res.json())
             .then(data => {
+                alert(data.message);
                 if (data.success) {
-                    // 自動生成直跳 Google 行事曆的網址
-                    const gCalUrl = createGoogleCalendarUrl(payload);
-                    if (confirm(data.message + '\n\n是否立即將此筆預約加入您的 Google 行事曆？')) {
+                    if (document.getElementById('autoAddToGCal').checked) {
+                        const gCalUrl = createGoogleCalendarUrl(payload);
                         window.open(gCalUrl, '_blank');
                     }
                     resetForm();
                     loadBookings();
-                } else {
-                    alert(data.message);
                 }
             });
         });
@@ -246,7 +252,7 @@
         }
 
         function prepareUpdate(id) {
-            fetch('/api/bookings')
+            fetch('/api/bookings?t=' + Date.now())
                 .then(res => res.json())
                 .then(data => {
                     const b = data.bookings.find(item => item.id === id);
@@ -255,7 +261,7 @@
                         document.getElementById('isUpdate').value = 'true';
                         document.getElementById('title').value = b.title;
                         document.getElementById('applicant').value = b.applicant;
-                        document.getElementById('empId').value = ''; 
+                        document.getElementById('x_user_code_no_pass').value = ''; 
                         document.getElementById('dept').value = b.dept || '';
                         document.getElementById('startDate').value = b.startDate;
                         document.getElementById('startTime').value = b.startTime;

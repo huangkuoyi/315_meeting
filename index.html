@@ -143,12 +143,15 @@
         let currentTargetId = '';
 
         document.addEventListener('DOMContentLoaded', () => {
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('startDate').value = today;
-            document.getElementById('endDate').value = today;
-            
+            initDefaultDateTime();
+
+            // 開始日期變更時，若結束日期比開始日期早或為空，自動補齊
             document.getElementById('startDate').addEventListener('change', (e) => {
-                document.getElementById('endDate').value = e.target.value;
+                const sDate = e.target.value;
+                const eDateInput = document.getElementById('endDate');
+                if (!eDateInput.value || eDateInput.value < sDate) {
+                    eDateInput.value = sDate;
+                }
             });
 
             document.getElementById('toggleEmpId').addEventListener('click', () => {
@@ -166,6 +169,14 @@
             loadBookings();
         });
 
+        function initDefaultDateTime() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('startDate').value = today;
+            document.getElementById('endDate').value = today;
+            document.getElementById('startTime').value = "08:00";
+            document.getElementById('endTime').value = "09:00";
+        }
+
         function loadBookings() {
             fetch('/api/bookings?t=' + Date.now())
                 .then(res => res.json())
@@ -178,7 +189,7 @@
 
         function renderTable(bookings) {
             const tbody = document.getElementById('bookingTableBody');
-            if (bookings.length === 0) {
+            if (!bookings || bookings.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">目前尚無預約登記紀錄</td></tr>';
                 return;
             }
@@ -221,4 +232,89 @@
                 endDate: document.getElementById('endDate').value,
                 endTime: document.getElementById('endTime').value,
                 remarks: document.getElementById('remarks').value,
-                isUpdate: document.getElementById('isUpdate').value === '
+                isUpdate: document.getElementById('isUpdate').value === 'true'
+            };
+
+            fetch('/api/bookings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.message);
+                if (data.success) {
+                    resetForm();
+                    loadBookings();
+                }
+            });
+        });
+
+        function prepareUpdate(id) {
+            fetch('/api/bookings?t=' + Date.now())
+                .then(res => res.json())
+                .then(data => {
+                    const b = data.bookings.find(item => item.id === id);
+                    if (b) {
+                        document.getElementById('bookingId').value = b.id;
+                        document.getElementById('isUpdate').value = 'true';
+                        document.getElementById('title').value = b.title;
+                        document.getElementById('applicant').value = b.applicant;
+                        document.getElementById('userCodeBox').innerText = ''; 
+                        document.getElementById('dept').value = b.dept || '';
+                        document.getElementById('startDate').value = b.startDate;
+                        document.getElementById('startTime').value = b.startTime;
+                        document.getElementById('endDate').value = b.endDate;
+                        document.getElementById('endTime').value = b.endTime;
+                        document.getElementById('remarks').value = b.remarks || '';
+                        
+                        document.getElementById('btnSubmit').textContent = '確認變更預約';
+                        document.getElementById('btnSubmit').className = 'btn btn-warning px-4';
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                });
+        }
+
+        function prepareDelete(id) {
+            currentTargetId = id;
+            document.getElementById('verifyUserCodeBox').innerText = '';
+            const modal = new bootstrap.Modal(document.getElementById('verifyModal'));
+            modal.show();
+        }
+
+        document.getElementById('btnConfirmAction').addEventListener('click', () => {
+            const verifyEmpId = document.getElementById('verifyUserCodeBox').innerText.trim();
+            if (!verifyEmpId) {
+                alert('請輸入員工編號！');
+                return;
+            }
+
+            fetch('/api/bookings/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: currentTargetId, verifyEmpId: verifyEmpId })
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.message);
+                if (data.success) {
+                    const modalEl = document.getElementById('verifyModal');
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    modal.hide();
+                    loadBookings();
+                }
+            });
+        });
+
+        function resetForm() {
+            document.getElementById('bookingForm').reset();
+            document.getElementById('bookingId').value = '';
+            document.getElementById('isUpdate').value = 'false';
+            document.getElementById('userCodeBox').innerText = '';
+            document.getElementById('btnSubmit').textContent = '確認送出登記';
+            document.getElementById('btnSubmit').className = 'btn btn-primary px-4';
+            initDefaultDateTime();
+        }
+    </script>
+</body>
+</html>

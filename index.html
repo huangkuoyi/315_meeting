@@ -12,8 +12,31 @@
         .header-bg { background: linear-gradient(135deg, #0d6efd, #0a58ca); color: white; border-radius: 12px 12px 0 0; padding: 20px; }
         .table-hover tbody tr:hover { background-color: #f1f5f9; }
         .btn-action { margin: 2px; }
-        /* 使用標籤樣式將員編遮罩，徹底避開 Chrome 密碼表單偵測引擎 */
-        .mask-text { -webkit-text-security: disc !important; text-security: disc !important; }
+        
+        /* 徹底防止 Chrome 自動彈出高強度密碼的自訂編輯盒 */
+        .div-input-box {
+            display: block;
+            width: 100%;
+            padding: 0.375rem 0.75rem;
+            font-size: 1rem;
+            font-weight: 400;
+            line-height: 1.5;
+            color: #212529;
+            background-color: #fff;
+            background-clip: padding-box;
+            border: 1px solid #ced4da;
+            border-radius: 0.375rem;
+            min-height: 38px;
+            outline: none;
+        }
+        .div-input-box:focus {
+            border-color: #86b7fe;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        }
+        .div-input-box.masked {
+            -webkit-text-security: disc !important;
+            text-security: disc !important;
+        }
     </style>
 </head>
 <body class="py-4">
@@ -26,7 +49,7 @@
                             <h3 class="mb-1"><i class="bi bi-building-gear me-2"></i>工安處南部辦公室</h3>
                             <h5 class="mb-0">會議室 (315) 使用登記系統</h5>
                         </div>
-                        <button class="btn btn-light text-primary font-weight-bold mt-2 mt-md-0" onclick="copyCalendarUrl()">
+                        <button class="btn btn-light text-primary fw-bold mt-2 mt-md-0" onclick="copyCalendarUrl()">
                             <i class="bi bi-calendar-plus me-1"></i>複製 Google 日曆訂閱網址
                         </button>
                     </div>
@@ -48,8 +71,8 @@
                                 <div class="col-md-3">
                                     <label class="form-label">員工編號 <span class="text-danger">*</span></label>
                                     <div class="input-group">
-                                        <!-- 去除任何 emp/pass 關鍵字，徹底防禦 Chrome 自動跳高強度密碼 -->
-                                        <input type="text" class="form-control mask-text" id="x_user_code_no_pass" placeholder="手動輸入員編" required autocomplete="off" name="x_user_code_no_pass">
+                                        <!-- 改用 DIV 自訂盒，非 input 標籤，100% 免疫 Chrome 密碼彈鎖 -->
+                                        <div id="userCodeBox" class="div-input-box masked" contenteditable="true" role="textbox" aria-placeholder="手動輸入員編"></div>
                                         <button class="btn btn-outline-secondary" type="button" id="toggleEmpId">
                                             <i class="bi bi-eye" id="eyeIcon"></i>
                                         </button>
@@ -87,7 +110,7 @@
                                 <div class="form-check me-3">
                                     <input class="form-check-input" type="checkbox" id="autoAddToGCal" checked>
                                     <label class="form-check-label text-muted" for="autoAddToGCal">
-                                        登記成功後自動開啟頁面加到我的 Google 日曆
+                                        登記成功後自動開啟 Google 行事曆頁面加入
                                     </label>
                                 </div>
                                 <div>
@@ -135,7 +158,7 @@
                 </div>
                 <div class="modal-body">
                     <p id="verifyMsg">請輸入您的員工編號以執行此操作：</p>
-                    <input type="text" class="form-control mask-text" id="verifyEmpId" placeholder="輸入員編" autocomplete="off" name="verify_emp_id_no_pass">
+                    <div id="verifyUserCodeBox" class="div-input-box masked" contenteditable="true" role="textbox"></div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
@@ -159,13 +182,13 @@
             });
 
             document.getElementById('toggleEmpId').addEventListener('click', () => {
-                const empInput = document.getElementById('x_user_code_no_pass');
+                const box = document.getElementById('userCodeBox');
                 const eyeIcon = document.getElementById('eyeIcon');
-                if (empInput.classList.contains('mask-text')) {
-                    empInput.classList.remove('mask-text');
+                if (box.classList.contains('masked')) {
+                    box.classList.remove('masked');
                     eyeIcon.className = 'bi bi-eye-slash';
                 } else {
-                    empInput.classList.add('mask-text');
+                    box.classList.add('masked');
                     eyeIcon.className = 'bi bi-eye';
                 }
             });
@@ -209,11 +232,17 @@
 
         document.getElementById('bookingForm').addEventListener('submit', (e) => {
             e.preventDefault();
+            const empIdValue = document.getElementById('userCodeBox').innerText.trim();
+            if(!empIdValue) {
+                alert('請輸入員工編號！');
+                return;
+            }
+
             const payload = {
                 id: document.getElementById('bookingId').value || 'b_' + Date.now(),
                 title: document.getElementById('title').value,
                 applicant: document.getElementById('applicant').value,
-                empId: document.getElementById('x_user_code_no_pass').value,
+                empId: empIdValue,
                 dept: document.getElementById('dept').value,
                 startDate: document.getElementById('startDate').value,
                 startTime: document.getElementById('startTime').value,
@@ -261,7 +290,7 @@
                         document.getElementById('isUpdate').value = 'true';
                         document.getElementById('title').value = b.title;
                         document.getElementById('applicant').value = b.applicant;
-                        document.getElementById('x_user_code_no_pass').value = ''; 
+                        document.getElementById('userCodeBox').innerText = ''; 
                         document.getElementById('dept').value = b.dept || '';
                         document.getElementById('startDate').value = b.startDate;
                         document.getElementById('startTime').value = b.startTime;
@@ -278,13 +307,13 @@
 
         function prepareDelete(id) {
             currentTargetId = id;
-            document.getElementById('verifyEmpId').value = '';
+            document.getElementById('verifyUserCodeBox').innerText = '';
             const modal = new bootstrap.Modal(document.getElementById('verifyModal'));
             modal.show();
         }
 
         document.getElementById('btnConfirmAction').addEventListener('click', () => {
-            const verifyEmpId = document.getElementById('verifyEmpId').value;
+            const verifyEmpId = document.getElementById('verifyUserCodeBox').innerText.trim();
             if (!verifyEmpId) {
                 alert('請輸入員工編號！');
                 return;
@@ -311,6 +340,7 @@
             document.getElementById('bookingForm').reset();
             document.getElementById('bookingId').value = '';
             document.getElementById('isUpdate').value = 'false';
+            document.getElementById('userCodeBox').innerText = '';
             document.getElementById('btnSubmit').textContent = '確認送出登記';
             document.getElementById('btnSubmit').className = 'btn btn-primary px-4';
             const today = new Date().toISOString().split('T')[0];

@@ -1,4 +1,5 @@
 import os
+import json
 import smtplib
 from email.mime.text import MIMEText
 from email.header import Header
@@ -16,6 +17,8 @@ MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
 ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'h.kuoyi@gmail.com')
 
 def get_db():
+    if not DB_URL:
+        raise ValueError("系統找不到 DATABASE_URL 環境變數，請確認 Render 後台設定！")
     return psycopg2.connect(DB_URL, cursor_factory=RealDictCursor)
 
 def send_notification_email(action_type, booking_data):

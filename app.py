@@ -2,11 +2,10 @@ import os
 import smtplib
 from email.mime.text import MIMEText
 from email.header import Header
-from flask import Flask, request, jsonify, render_template, Response
+from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from datetime import datetime
 
 app = Flask(__name__, template_folder='.')
 CORS(app)
@@ -20,14 +19,10 @@ def get_db():
     return psycopg2.connect(DB_URL, cursor_factory=RealDictCursor)
 
 def send_notification_email(action_type, booking_data):
-    """發送預約變動通知信給管理者"""
     if not MAIL_USERNAME or not MAIL_PASSWORD:
-        print("未設定 Email 帳密，跳過寄信通知。")
         return
-
     try:
-        subject = f"【315會議室預約通知】{action_type} - {booking_data.get('title')} ({booking_data.get('applicant')})"
-        
+        subject = f"【315會議室通知】{action_type} - {booking_data.get('title')} ({booking_data.get('applicant')})"
         body = f"""黃大哥 您好，
 
 315 會議室預約系統有最新動態：
@@ -41,32 +36,18 @@ def send_notification_email(action_type, booking_data):
 ---
 本信件由 315 會議室預約系統自動發送。
 """
-
         msg = MIMEText(body, 'plain', 'utf-8')
         msg['Subject'] = Header(subject, 'utf-8')
         msg['From'] = MAIL_USERNAME
         msg['To'] = ADMIN_EMAIL
 
-        # 使用 Gmail SMTP (Port 587 TLS)
         server = smtplib.SMTP('smtp.gmail.com', 587)
         server.starttls()
         server.login(MAIL_USERNAME, MAIL_PASSWORD)
         server.sendmail(MAIL_USERNAME, [ADMIN_EMAIL], msg.as_string())
         server.quit()
-        print(f"成功寄送通知信給 {ADMIN_EMAIL}")
     except Exception as e:
         print(f"寄信失敗: {e}")
-
-def init_and_clean_db():
-    try:
-        conn = get_db()
-        cur = conn.cursor()
-        cur.execute("SELECT clean_old_bookings();")
-        conn.commit()
-        cur.close()
-        conn.close()
-    except Exception as e:
-        print(f"Database init error: {e}")
 
 @app.route('/')
 def index():
@@ -75,7 +56,6 @@ def index():
 @app.route('/api/bookings', methods=['GET'])
 def get_bookings():
     try:
-        init_and_clean_db()
         conn = get_db()
         cur = conn.cursor()
         cur.execute("SELECT id, title, applicant, dept, start_date::text as \"startDate\", start_time as \"startTime\", end_date::text as \"endDate\", end_time as \"endTime\", remarks FROM bookings ORDER BY start_date ASC, start_time ASC;")
@@ -93,7 +73,7 @@ def save_booking():
         conn = get_db()
         cur = conn.cursor()
         
-        # 檢查時段重疊
+        # 衝突檢查
         cur.execute("""
             SELECT id FROM bookings 
             WHERE id != %s 
@@ -109,10 +89,10 @@ def save_booking():
         if data.get('isUpdate'):
             cur.execute("SELECT emp_id FROM bookings WHERE id = %s;", (data.get('id'),))
             target = cur.fetchone()
-            if not target:
-                return jsonify({'success': False, 'message': '❌ 找不到欲變更的預約紀錄！'})
-            if data.get('empId') != '746878' and data.get('empId') != target['emp_id']:
-                return jsonify({'success': False, 'message': '❌ 員工編號驗證失敗！無法變更此預約。'})
+            if not target or (data.get('empId') != '746878' and data.get('empId') != target['emp_id']):
+                cur.close()
+                conn.close()
+                return jsonify({'success': False, 'message': '❌ 員工編號驗證失敗！無法變更。'})
 
             cur.execute("""
                 UPDATE bookings 
@@ -134,10 +114,7 @@ def save_booking():
         conn.commit()
         cur.close()
         conn.close()
-
-        # 觸發背景 Email 通知
         send_notification_email(action_type, data)
-
         return jsonify({'success': True, 'message': msg})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -145,24 +122,22 @@ def save_booking():
 @app.route('/api/bookings/delete', methods=['POST'])
 def delete_booking():
     data = request.json
-    booking_id = data.get('id')
-    verify_emp_id = data.get('verifyEmpId')
     try:
         conn = get_db()
         cur = conn.cursor()
-        cur.execute("SELECT title, applicant, dept, start_date::text as \"startDate\", start_time as \"startTime\", end_date::text as \"endDate\", end_time as \"endTime\", remarks, emp_id FROM bookings WHERE id = %s;", (booking_id,))
+        cur.execute("SELECT title, applicant, dept, start_date::text as \"startDate\", start_time as \"startTime\", end_date::text as \"endDate\", end_time as \"endTime\", remarks, emp_id FROM bookings WHERE id = %s;", (data.get('id'),))
         row = cur.fetchone()
         if not row:
+            cur.close()
+            conn.close()
             return jsonify({'success': False, 'message': '❌ 找不到該筆預約紀錄！'})
 
-        if verify_emp_id == '746878' or verify_emp_id == row['emp_id']:
-            cur.execute("DELETE FROM bookings WHERE id = %s;", (booking_id,))
+        if data.get('verifyEmpId') == '746878' or data.get('verifyEmpId') == row['emp_id']:
+            cur.execute("DELETE FROM bookings WHERE id = %s;", (data.get('id'),))
             conn.commit()
+            send_notification_email('撤銷預約', dict(row))
             msg = '✅ 預約紀錄已成功撤銷！'
             success = True
-            
-            # 寄送撤销通知
-            send_notification_email('撤銷預約', dict(row))
         else:
             msg = '❌ 員工編號驗證失敗！無法撤銷預約。'
             success = False

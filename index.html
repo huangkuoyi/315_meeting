@@ -12,11 +12,31 @@
         .header-bg { background: linear-gradient(135deg, #0d6efd, #0a58ca); color: white; border-radius: 12px 12px 0 0; padding: 20px; }
         .table-hover tbody tr:hover { background-color: #f1f5f9; }
         .btn-action { margin: 2px; }
+        
         /* 徹底防止 Chrome 自動彈出高強度密碼的自訂編輯盒 */
         .div-input-box {
-            display: block; width: 100%; padding: 0.375rem 0.75rem; font-size: 1rem; font-weight: 400; line-height: 1.5; color: #212529; background-color: #fff; border: 1px solid #ced4da; border-radius: 0.375rem; min-height: 38px; outline: none;
+            display: block;
+            width: 100%;
+            padding: 0.375rem 0.75rem;
+            font-size: 1rem;
+            font-weight: 400;
+            line-height: 1.5;
+            color: #212529;
+            background-color: #fff;
+            background-clip: padding-box;
+            border: 1px solid #ced4da;
+            border-radius: 0.375rem;
+            min-height: 38px;
+            outline: none;
         }
-        .div-input-box.masked { -webkit-text-security: disc !important; text-security: disc !important; }
+        .div-input-box:focus {
+            border-color: #86b7fe;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        }
+        .div-input-box.masked {
+            -webkit-text-security: disc !important;
+            text-security: disc !important;
+        }
     </style>
 </head>
 <body class="py-4">
@@ -29,6 +49,9 @@
                             <h3 class="mb-1"><i class="bi bi-building-gear me-2"></i>工安處南部辦公室</h3>
                             <h5 class="mb-0">會議室 (315) 使用登記系統</h5>
                         </div>
+                        <button class="btn btn-light text-primary fw-bold mt-2 mt-md-0" onclick="copyCalendarUrl()">
+                            <i class="bi bi-calendar-plus me-1"></i>複製 Google 日曆訂閱網址
+                        </button>
                     </div>
                     <div class="card-body p-4">
                         <h5 class="card-title text-primary mb-3"><i class="bi bi-pencil-square me-2"></i>預約登記表單</h5>
@@ -38,18 +61,18 @@
                             
                             <div class="row g-3">
                                 <div class="col-md-6">
-                                    <label class="form-label fw-bold">會議事由 / 名稱 <span class="text-danger">*</span></label>
+                                    <label class="form-label font-weight-bold">會議事由 / 名稱 <span class="text-danger">*</span></label>
                                     <input type="text" class="form-control" id="title" placeholder="例如：PSM 審查會議" required>
                                 </div>
                                 <div class="col-md-3">
-                                    <label class="form-label fw-bold">登記人姓名 <span class="text-danger">*</span></label>
+                                    <label class="form-label">登記人姓名 <span class="text-danger">*</span></label>
                                     <input type="text" class="form-control" id="applicant" placeholder="黃國益" required>
                                 </div>
                                 <div class="col-md-3">
-                                    <label class="form-label fw-bold">員工編號 <span class="text-danger">*</span></label>
+                                    <label class="form-label">員工編號 <span class="text-danger">*</span></label>
                                     <div class="input-group">
                                         <!-- 改用 DIV 自訂盒，非 input 標籤，100% 免疫 Chrome 密碼彈鎖 -->
-                                        <div id="userCodeBox" class="div-input-box masked" contenteditable="true" role="textbox"></div>
+                                        <div id="userCodeBox" class="div-input-box masked" contenteditable="true" role="textbox" aria-placeholder="手動輸入員編"></div>
                                         <button class="btn btn-outline-secondary" type="button" id="toggleEmpId">
                                             <i class="bi bi-eye" id="eyeIcon"></i>
                                         </button>
@@ -66,26 +89,34 @@
                                 </div>
 
                                 <div class="col-md-3">
-                                    <label class="form-label fw-bold">開始日期 <span class="text-danger">*</span></label>
+                                    <label class="form-label">開始日期 <span class="text-danger">*</span></label>
                                     <input type="date" class="form-control" id="startDate" required>
                                 </div>
                                 <div class="col-md-3">
-                                    <label class="form-label fw-bold">開始時間 (24HR) <span class="text-danger">*</span></label>
+                                    <label class="form-label">開始時間 (24HR) <span class="text-danger">*</span></label>
                                     <input type="time" class="form-control" id="startTime" required>
                                 </div>
                                 <div class="col-md-3">
-                                    <label class="form-label fw-bold">結束日期 <span class="text-danger">*</span></label>
+                                    <label class="form-label">結束日期 <span class="text-danger">*</span></label>
                                     <input type="date" class="form-control" id="endDate" required>
                                 </div>
                                 <div class="col-md-3">
-                                    <label class="form-label fw-bold">結束時間 (24HR) <span class="text-danger">*</span></label>
+                                    <label class="form-label">結束時間 (24HR) <span class="text-danger">*</span></label>
                                     <input type="time" class="form-control" id="endTime" required>
                                 </div>
                             </div>
 
-                            <div class="mt-4 text-end">
-                                <button type="button" class="btn btn-secondary me-2" id="btnReset" onclick="resetForm()">重設清空</button>
-                                <button type="submit" class="btn btn-primary px-4" id="btnSubmit">確認送出登記</button>
+                            <div class="mt-4 d-flex justify-content-between align-items-center flex-wrap">
+                                <div class="form-check me-3">
+                                    <input class="form-check-input" type="checkbox" id="autoAddToGCal" checked>
+                                    <label class="form-check-label text-muted" for="autoAddToGCal">
+                                        登記成功後自動開啟 Google 行事曆頁面加入
+                                    </label>
+                                </div>
+                                <div>
+                                    <button type="button" class="btn btn-secondary me-2" id="btnReset" onclick="resetForm()">重設清空</button>
+                                    <button type="submit" class="btn btn-primary px-4" id="btnSubmit">確認送出登記</button>
+                                </div>
                             </div>
                         </form>
                     </div>
@@ -93,7 +124,7 @@
 
                 <div class="card card-custom">
                     <div class="card-body p-4">
-                        <h5 class="card-title text-primary mb-3"><i class="bi bi-calendar3 me-2"></i>即時預約檢視表 (可直接一鍵加入行事曆)</h5>
+                        <h5 class="card-title text-primary mb-3"><i class="bi bi-calendar3 me-2"></i>即時預約檢視表</h5>
                         <div class="table-responsive">
                             <table class="table table-hover align-middle">
                                 <thead class="table-light">
@@ -102,7 +133,7 @@
                                         <th>會議事由</th>
                                         <th>登記人 (單位)</th>
                                         <th>備註</th>
-                                        <th class="text-center">操作</th>
+                                        <th class="text-center">操作變更</th>
                                     </tr>
                                 </thead>
                                 <tbody id="bookingTableBody">
@@ -182,9 +213,7 @@
                 return;
             }
 
-            tbody.innerHTML = bookings.map(b => {
-                const gCalUrl = createGoogleCalendarUrl(b);
-                return `
+            tbody.innerHTML = bookings.map(b => `
                 <tr>
                     <td>
                         <span class="badge bg-primary me-1">${b.startDate}</span> ${b.startTime} <br>
@@ -194,15 +223,11 @@
                     <td>${b.applicant} ${b.dept ? `(${b.dept})` : ''}</td>
                     <td>${b.remarks || '-'}</td>
                     <td class="text-center">
-                        <a href="${gCalUrl}" target="_blank" class="btn btn-sm btn-outline-success btn-action" title="將此行程加到我的 Google 日曆">
-                            <i class="bi bi-calendar-plus me-1"></i>加日曆
-                        </a>
                         <button class="btn btn-sm btn-outline-warning btn-action" onclick="prepareUpdate('${b.id}')">變更</button>
                         <button class="btn btn-sm btn-outline-danger btn-action" onclick="prepareDelete('${b.id}')">撤銷</button>
                     </td>
                 </tr>
-                `;
-            }).join('');
+            `).join('');
         }
 
         document.getElementById('bookingForm').addEventListener('submit', (e) => {
@@ -236,9 +261,10 @@
             .then(data => {
                 alert(data.message);
                 if (data.success) {
-                    // 自動開啟 Google 日曆填寫頁面
-                    const gCalUrl = createGoogleCalendarUrl(payload);
-                    window.open(gCalUrl, '_blank');
+                    if (document.getElementById('autoAddToGCal').checked) {
+                        const gCalUrl = createGoogleCalendarUrl(payload);
+                        window.open(gCalUrl, '_blank');
+                    }
                     resetForm();
                     loadBookings();
                 }
@@ -320,6 +346,13 @@
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('startDate').value = today;
             document.getElementById('endDate').value = today;
+        }
+
+        function copyCalendarUrl() {
+            const calUrl = window.location.origin + '/calendar.ics';
+            navigator.clipboard.writeText(calUrl).then(() => {
+                alert('已複製 315 會議室全局日曆訂閱網址！\n\n請至 Google 日曆「其他日曆 +」->「加入日曆網址」貼上即可建立自動同步日曆。');
+            });
         }
     </script>
 </body>

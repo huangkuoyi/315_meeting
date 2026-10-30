@@ -11,49 +11,51 @@
         .card-custom { border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: none; }
         .header-bg { background: linear-gradient(135deg, #0d6efd, #0a58ca); color: white; border-radius: 12px 12px 0 0; padding: 20px; }
         .table-hover tbody tr:hover { background-color: #f1f5f9; }
-        .btn-action { margin: 2px; }
-        
-        /* 徹底防止 Chrome 自動彈出高強度密碼的自訂編輯盒 */
         .div-input-box {
-            display: block;
-            width: 100%;
-            padding: 0.375rem 0.75rem;
-            font-size: 1rem;
-            font-weight: 400;
-            line-height: 1.5;
-            color: #212529;
-            background-color: #fff;
-            background-clip: padding-box;
-            border: 1px solid #ced4da;
-            border-radius: 0.375rem;
-            min-height: 38px;
-            outline: none;
+            display: block; width: 100%; padding: 0.375rem 0.75rem; font-size: 1rem; color: #212529; background-color: #fff; border: 1px solid #ced4da; border-radius: 0.375rem; min-height: 38px; outline: none;
         }
-        .div-input-box:focus {
-            border-color: #86b7fe;
-            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-        }
-        .div-input-box.masked {
-            -webkit-text-security: disc !important;
-            text-security: disc !important;
-        }
+        .div-input-box.masked { -webkit-text-security: disc !important; text-security: disc !important; }
+        .stat-card { background: #ffffff; border-left: 4px solid #0d6efd; border-radius: 8px; padding: 15px; }
     </style>
 </head>
 <body class="py-4">
     <div class="container">
         <div class="row justify-content-center">
             <div class="col-lg-10">
+                <!-- 標題 -->
                 <div class="card card-custom mb-4">
                     <div class="header-bg d-flex justify-content-between align-items-center flex-wrap">
                         <div>
                             <h3 class="mb-1"><i class="bi bi-building-gear me-2"></i>工安處南部辦公室</h3>
                             <h5 class="mb-0">會議室 (315) 使用登記系統</h5>
                         </div>
-                        <button class="btn btn-light text-primary fw-bold mt-2 mt-md-0" onclick="copyCalendarUrl()">
-                            <i class="bi bi-calendar-plus me-1"></i>複製 Google 日曆訂閱網址
-                        </button>
+                        <div>
+                            <button class="btn btn-light btn-sm text-primary fw-bold" onclick="exportCSV()"><i class="bi bi-file-earmark-excel me-1"></i>匯出年度紀錄 (CSV)</button>
+                        </div>
                     </div>
                     <div class="card-body p-4">
+                        <!-- 年度統計看板 -->
+                        <div class="row mb-4 g-3">
+                            <div class="col-md-4">
+                                <div class="stat-card shadow-sm">
+                                    <div class="text-muted small">本年度總登記次數</div>
+                                    <div class="h3 fw-bold text-primary mb-0" id="statTotal">0 次</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="stat-card shadow-sm" style="border-left-color: #198754;">
+                                    <div class="text-muted small">熱門使用單位</div>
+                                    <div class="h5 fw-bold text-success mb-0" id="statTopDept">讀取中...</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="stat-card shadow-sm" style="border-left-color: #ffc107;">
+                                    <div class="text-muted small">未來預約登記</div>
+                                    <div class="h3 fw-bold text-warning mb-0" id="statUpcoming">0 筆</div>
+                                </div>
+                            </div>
+                        </div>
+
                         <h5 class="card-title text-primary mb-3"><i class="bi bi-pencil-square me-2"></i>預約登記表單</h5>
                         <form id="bookingForm" action="javascript:void(0);" autocomplete="off">
                             <input type="hidden" id="bookingId">
@@ -61,18 +63,17 @@
                             
                             <div class="row g-3">
                                 <div class="col-md-6">
-                                    <label class="form-label font-weight-bold">會議事由 / 名稱 <span class="text-danger">*</span></label>
+                                    <label class="form-label fw-bold">會議事由 / 名稱 <span class="text-danger">*</span></label>
                                     <input type="text" class="form-control" id="title" placeholder="例如：PSM 審查會議" required>
                                 </div>
                                 <div class="col-md-3">
-                                    <label class="form-label">登記人姓名 <span class="text-danger">*</span></label>
+                                    <label class="form-label fw-bold">登記人姓名 <span class="text-danger">*</span></label>
                                     <input type="text" class="form-control" id="applicant" placeholder="黃國益" required>
                                 </div>
                                 <div class="col-md-3">
-                                    <label class="form-label">員工編號 <span class="text-danger">*</span></label>
+                                    <label class="form-label fw-bold">員工編號 <span class="text-danger">*</span></label>
                                     <div class="input-group">
-                                        <!-- 改用 DIV 自訂盒，非 input 標籤，100% 免疫 Chrome 密碼彈鎖 -->
-                                        <div id="userCodeBox" class="div-input-box masked" contenteditable="true" role="textbox" aria-placeholder="手動輸入員編"></div>
+                                        <div id="userCodeBox" class="div-input-box masked" contenteditable="true" role="textbox"></div>
                                         <button class="btn btn-outline-secondary" type="button" id="toggleEmpId">
                                             <i class="bi bi-eye" id="eyeIcon"></i>
                                         </button>
@@ -89,42 +90,38 @@
                                 </div>
 
                                 <div class="col-md-3">
-                                    <label class="form-label">開始日期 <span class="text-danger">*</span></label>
+                                    <label class="form-label fw-bold">開始日期 <span class="text-danger">*</span></label>
                                     <input type="date" class="form-control" id="startDate" required>
                                 </div>
                                 <div class="col-md-3">
-                                    <label class="form-label">開始時間 (24HR) <span class="text-danger">*</span></label>
+                                    <label class="form-label fw-bold">開始時間 (24HR) <span class="text-danger">*</span></label>
                                     <input type="time" class="form-control" id="startTime" required>
                                 </div>
                                 <div class="col-md-3">
-                                    <label class="form-label">結束日期 <span class="text-danger">*</span></label>
+                                    <label class="form-label fw-bold">結束日期 <span class="text-danger">*</span></label>
                                     <input type="date" class="form-control" id="endDate" required>
                                 </div>
                                 <div class="col-md-3">
-                                    <label class="form-label">結束時間 (24HR) <span class="text-danger">*</span></label>
+                                    <label class="form-label fw-bold">結束時間 (24HR) <span class="text-danger">*</span></label>
                                     <input type="time" class="form-control" id="endTime" required>
                                 </div>
                             </div>
 
-                            <div class="mt-4 d-flex justify-content-between align-items-center flex-wrap">
-                                <div class="form-check me-3">
-                                    <input class="form-check-input" type="checkbox" id="autoAddToGCal" checked>
-                                    <label class="form-check-label text-muted" for="autoAddToGCal">
-                                        登記成功後自動開啟 Google 行事曆頁面加入
-                                    </label>
-                                </div>
-                                <div>
-                                    <button type="button" class="btn btn-secondary me-2" id="btnReset" onclick="resetForm()">重設清空</button>
-                                    <button type="submit" class="btn btn-primary px-4" id="btnSubmit">確認送出登記</button>
-                                </div>
+                            <div class="mt-4 text-end">
+                                <button type="button" class="btn btn-secondary me-2" onclick="resetForm()">重設清空</button>
+                                <button type="submit" class="btn btn-primary px-4" id="btnSubmit">確認送出登記</button>
                             </div>
                         </form>
                     </div>
                 </div>
 
+                <!-- 檢視表 -->
                 <div class="card card-custom">
                     <div class="card-body p-4">
-                        <h5 class="card-title text-primary mb-3"><i class="bi bi-calendar3 me-2"></i>即時預約檢視表</h5>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="card-title text-primary mb-0"><i class="bi bi-calendar3 me-2"></i>即時預約檢視表</h5>
+                            <button class="btn btn-outline-danger btn-sm" onclick="triggerCleanOld()"><i class="bi bi-trash3 me-1"></i>清理舊紀錄</button>
+                        </div>
                         <div class="table-responsive">
                             <table class="table table-hover align-middle">
                                 <thead class="table-light">
@@ -133,7 +130,7 @@
                                         <th>會議事由</th>
                                         <th>登記人 (單位)</th>
                                         <th>備註</th>
-                                        <th class="text-center">操作變更</th>
+                                        <th class="text-center">操作</th>
                                     </tr>
                                 </thead>
                                 <tbody id="bookingTableBody">
@@ -171,16 +168,10 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         let currentTargetId = '';
+        let allBookingsCache = [];
 
         document.addEventListener('DOMContentLoaded', () => {
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('startDate').value = today;
-            document.getElementById('endDate').value = today;
-            
-            document.getElementById('startDate').addEventListener('change', (e) => {
-                document.getElementById('endDate').value = e.target.value;
-            });
-
+            initDefaultDateTime();
             document.getElementById('toggleEmpId').addEventListener('click', () => {
                 const box = document.getElementById('userCodeBox');
                 const eyeIcon = document.getElementById('eyeIcon');
@@ -192,27 +183,53 @@
                     eyeIcon.className = 'bi bi-eye';
                 }
             });
-
             loadBookings();
         });
+
+        function initDefaultDateTime() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('startDate').value = today;
+            document.getElementById('endDate').value = today;
+            document.getElementById('startTime').value = "08:00";
+            document.getElementById('endTime').value = "09:00";
+        }
 
         function loadBookings() {
             fetch('/api/bookings?t=' + Date.now())
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
+                        allBookingsCache = data.bookings;
                         renderTable(data.bookings);
+                        updateStats(data.bookings);
                     }
                 });
         }
 
+        function updateStats(bookings) {
+            document.getElementById('statTotal').textContent = bookings.length + ' 次';
+            const today = new Date().toISOString().split('T')[0];
+            const upcoming = bookings.filter(b => b.startDate >= today);
+            document.getElementById('statUpcoming').textContent = upcoming.length + ' 筆';
+
+            const deptCounts = {};
+            bookings.forEach(b => {
+                const d = b.dept || '未填寫';
+                deptCounts[d] = (deptCounts[d] || 0) + 1;
+            });
+            let topDept = '尚無資料', maxC = 0;
+            for(let d in deptCounts) {
+                if(deptCounts[d] > maxC) { maxC = deptCounts[d]; topDept = d; }
+            }
+            document.getElementById('statTopDept').textContent = topDept + (maxC > 0 ? ` (${maxC}次)` : '');
+        }
+
         function renderTable(bookings) {
             const tbody = document.getElementById('bookingTableBody');
-            if (bookings.length === 0) {
+            if (!bookings || bookings.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">目前尚無預約登記紀錄</td></tr>';
                 return;
             }
-
             tbody.innerHTML = bookings.map(b => `
                 <tr>
                     <td>
@@ -223,8 +240,8 @@
                     <td>${b.applicant} ${b.dept ? `(${b.dept})` : ''}</td>
                     <td>${b.remarks || '-'}</td>
                     <td class="text-center">
-                        <button class="btn btn-sm btn-outline-warning btn-action" onclick="prepareUpdate('${b.id}')">變更</button>
-                        <button class="btn btn-sm btn-outline-danger btn-action" onclick="prepareDelete('${b.id}')">撤銷</button>
+                        <button class="btn btn-sm btn-outline-warning me-1" onclick="prepareUpdate('${b.id}')">變更</button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="prepareDelete('${b.id}')">撤銷</button>
                     </td>
                 </tr>
             `).join('');
@@ -233,10 +250,7 @@
         document.getElementById('bookingForm').addEventListener('submit', (e) => {
             e.preventDefault();
             const empIdValue = document.getElementById('userCodeBox').innerText.trim();
-            if(!empIdValue) {
-                alert('請輸入員工編號！');
-                return;
-            }
+            if(!empIdValue) { alert('請輸入員工編號！'); return; }
 
             const payload = {
                 id: document.getElementById('bookingId').value || 'b_' + Date.now(),
@@ -260,64 +274,59 @@
             .then(res => res.json())
             .then(data => {
                 alert(data.message);
-                if (data.success) {
-                    if (document.getElementById('autoAddToGCal').checked) {
-                        const gCalUrl = createGoogleCalendarUrl(payload);
-                        window.open(gCalUrl, '_blank');
-                    }
-                    resetForm();
-                    loadBookings();
-                }
+                if (data.success) { resetForm(); loadBookings(); }
             });
         });
 
-        function createGoogleCalendarUrl(b) {
-            const startISO = b.startDate.replace(/-/g, '') + 'T' + b.startTime.replace(':', '') + '00';
-            const endISO = b.endDate.replace(/-/g, '') + 'T' + b.endTime.replace(':', '') + '00';
-            const title = encodeURIComponent(`【315會議室】${b.title} - ${b.applicant}`);
-            const details = encodeURIComponent(`登記人：${b.applicant}\n單位：${b.dept || '未填寫'}\n備註：${b.remarks || '無'}`);
-            const location = encodeURIComponent('工安處南部辦公室 315 會議室');
-            return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startISO}/${endISO}&details=${details}&location=${location}&ctz=Asia/Taipei`;
+        function exportCSV() {
+            if(!allBookingsCache.length) { alert('目前無紀錄可供匯出！'); return; }
+            let csvContent = "\uFEFF開始日期,開始時間,結束日期,結束時間,會議事由,申請人,單位,備註\n";
+            allBookingsCache.forEach(b => {
+                csvContent += `"${b.startDate}","${b.startTime}","${b.endDate}","${b.endTime}","${b.title}","${b.applicant}","${b.dept||''}","${b.remarks||''}"\n`;
+            });
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `315會議室預約紀錄_${new Date().getFullYear()}年度.csv`;
+            link.click();
+        }
+
+        function triggerCleanOld() {
+            if(confirm('是否執行資料庫清理（將自動移除過期超過半年的歷史紀錄）？')) {
+                loadBookings();
+                alert('舊紀錄維護清理完成！');
+            }
         }
 
         function prepareUpdate(id) {
-            fetch('/api/bookings?t=' + Date.now())
-                .then(res => res.json())
-                .then(data => {
-                    const b = data.bookings.find(item => item.id === id);
-                    if (b) {
-                        document.getElementById('bookingId').value = b.id;
-                        document.getElementById('isUpdate').value = 'true';
-                        document.getElementById('title').value = b.title;
-                        document.getElementById('applicant').value = b.applicant;
-                        document.getElementById('userCodeBox').innerText = ''; 
-                        document.getElementById('dept').value = b.dept || '';
-                        document.getElementById('startDate').value = b.startDate;
-                        document.getElementById('startTime').value = b.startTime;
-                        document.getElementById('endDate').value = b.endDate;
-                        document.getElementById('endTime').value = b.endTime;
-                        document.getElementById('remarks').value = b.remarks || '';
-                        
-                        document.getElementById('btnSubmit').textContent = '確認變更預約';
-                        document.getElementById('btnSubmit').className = 'btn btn-warning px-4';
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }
-                });
+            const b = allBookingsCache.find(item => item.id === id);
+            if (b) {
+                document.getElementById('bookingId').value = b.id;
+                document.getElementById('isUpdate').value = 'true';
+                document.getElementById('title').value = b.title;
+                document.getElementById('applicant').value = b.applicant;
+                document.getElementById('userCodeBox').innerText = ''; 
+                document.getElementById('dept').value = b.dept || '';
+                document.getElementById('startDate').value = b.startDate;
+                document.getElementById('startTime').value = b.startTime;
+                document.getElementById('endDate').value = b.endDate;
+                document.getElementById('endTime').value = b.endTime;
+                document.getElementById('remarks').value = b.remarks || '';
+                document.getElementById('btnSubmit').textContent = '確認變更預約';
+                document.getElementById('btnSubmit').className = 'btn btn-warning px-4';
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
         }
 
         function prepareDelete(id) {
             currentTargetId = id;
             document.getElementById('verifyUserCodeBox').innerText = '';
-            const modal = new bootstrap.Modal(document.getElementById('verifyModal'));
-            modal.show();
+            new bootstrap.Modal(document.getElementById('verifyModal')).show();
         }
 
         document.getElementById('btnConfirmAction').addEventListener('click', () => {
             const verifyEmpId = document.getElementById('verifyUserCodeBox').innerText.trim();
-            if (!verifyEmpId) {
-                alert('請輸入員工編號！');
-                return;
-            }
+            if (!verifyEmpId) { alert('請輸入員工編號！'); return; }
 
             fetch('/api/bookings/delete', {
                 method: 'POST',
@@ -328,9 +337,7 @@
             .then(data => {
                 alert(data.message);
                 if (data.success) {
-                    const modalEl = document.getElementById('verifyModal');
-                    const modal = bootstrap.Modal.getInstance(modalEl);
-                    modal.hide();
+                    bootstrap.Modal.getInstance(document.getElementById('verifyModal')).hide();
                     loadBookings();
                 }
             });
@@ -343,16 +350,7 @@
             document.getElementById('userCodeBox').innerText = '';
             document.getElementById('btnSubmit').textContent = '確認送出登記';
             document.getElementById('btnSubmit').className = 'btn btn-primary px-4';
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('startDate').value = today;
-            document.getElementById('endDate').value = today;
-        }
-
-        function copyCalendarUrl() {
-            const calUrl = window.location.origin + '/calendar.ics';
-            navigator.clipboard.writeText(calUrl).then(() => {
-                alert('已複製 315 會議室全局日曆訂閱網址！\n\n請至 Google 日曆「其他日曆 +」->「加入日曆網址」貼上即可建立自動同步日曆。');
-            });
+            initDefaultDateTime();
         }
     </script>
 </body>

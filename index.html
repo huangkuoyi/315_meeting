@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>工安處南部辦公室 - 會議室(315)使用登記系統</title>
-    <!-- 引入 Bootstrap 5 與圖示 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <style>
@@ -13,7 +12,7 @@
         .header-bg { background: linear-gradient(135deg, #0d6efd, #0a58ca); color: white; border-radius: 12px 12px 0 0; padding: 20px; }
         .table-hover tbody tr:hover { background-color: #f1f5f9; }
         .btn-action { margin: 2px; }
-        /* 防 Chrome 自動彈出高強度密碼的自訂編輯盒 */
+        /* 徹底防止 Chrome 自動彈出高強度密碼的自訂編輯盒 */
         .div-input-box {
             display: block; width: 100%; padding: 0.375rem 0.75rem; font-size: 1rem; font-weight: 400; line-height: 1.5; color: #212529; background-color: #fff; border: 1px solid #ced4da; border-radius: 0.375rem; min-height: 38px; outline: none;
         }
@@ -49,7 +48,7 @@
                                 <div class="col-md-3">
                                     <label class="form-label fw-bold">員工編號 <span class="text-danger">*</span></label>
                                     <div class="input-group">
-                                        <!-- DIV 防護盒：不觸發 Chrome 密碼鎖 -->
+                                        <!-- 改用 DIV 自訂盒，非 input 標籤，100% 免疫 Chrome 密碼彈鎖 -->
                                         <div id="userCodeBox" class="div-input-box masked" contenteditable="true" role="textbox"></div>
                                         <button class="btn btn-outline-secondary" type="button" id="toggleEmpId">
                                             <i class="bi bi-eye" id="eyeIcon"></i>
@@ -94,7 +93,7 @@
 
                 <div class="card card-custom">
                     <div class="card-body p-4">
-                        <h5 class="card-title text-primary mb-3"><i class="bi bi-calendar3 me-2"></i>即時預約檢視表</h5>
+                        <h5 class="card-title text-primary mb-3"><i class="bi bi-calendar3 me-2"></i>即時預約檢視表 (可直接一鍵加入行事曆)</h5>
                         <div class="table-responsive">
                             <table class="table table-hover align-middle">
                                 <thead class="table-light">
@@ -143,15 +142,12 @@
         let currentTargetId = '';
 
         document.addEventListener('DOMContentLoaded', () => {
-            initDefaultDateTime();
-
-            // 開始日期變更時，若結束日期比開始日期早或為空，自動補齊
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('startDate').value = today;
+            document.getElementById('endDate').value = today;
+            
             document.getElementById('startDate').addEventListener('change', (e) => {
-                const sDate = e.target.value;
-                const eDateInput = document.getElementById('endDate');
-                if (!eDateInput.value || eDateInput.value < sDate) {
-                    eDateInput.value = sDate;
-                }
+                document.getElementById('endDate').value = e.target.value;
             });
 
             document.getElementById('toggleEmpId').addEventListener('click', () => {
@@ -169,14 +165,6 @@
             loadBookings();
         });
 
-        function initDefaultDateTime() {
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('startDate').value = today;
-            document.getElementById('endDate').value = today;
-            document.getElementById('startTime').value = "08:00";
-            document.getElementById('endTime').value = "09:00";
-        }
-
         function loadBookings() {
             fetch('/api/bookings?t=' + Date.now())
                 .then(res => res.json())
@@ -189,12 +177,13 @@
 
         function renderTable(bookings) {
             const tbody = document.getElementById('bookingTableBody');
-            if (!bookings || bookings.length === 0) {
+            if (bookings.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">目前尚無預約登記紀錄</td></tr>';
                 return;
             }
 
             tbody.innerHTML = bookings.map(b => {
+                const gCalUrl = createGoogleCalendarUrl(b);
                 return `
                 <tr>
                     <td>
@@ -205,6 +194,9 @@
                     <td>${b.applicant} ${b.dept ? `(${b.dept})` : ''}</td>
                     <td>${b.remarks || '-'}</td>
                     <td class="text-center">
+                        <a href="${gCalUrl}" target="_blank" class="btn btn-sm btn-outline-success btn-action" title="將此行程加到我的 Google 日曆">
+                            <i class="bi bi-calendar-plus me-1"></i>加日曆
+                        </a>
                         <button class="btn btn-sm btn-outline-warning btn-action" onclick="prepareUpdate('${b.id}')">變更</button>
                         <button class="btn btn-sm btn-outline-danger btn-action" onclick="prepareDelete('${b.id}')">撤銷</button>
                     </td>
@@ -244,11 +236,23 @@
             .then(data => {
                 alert(data.message);
                 if (data.success) {
+                    // 自動開啟 Google 日曆填寫頁面
+                    const gCalUrl = createGoogleCalendarUrl(payload);
+                    window.open(gCalUrl, '_blank');
                     resetForm();
                     loadBookings();
                 }
             });
         });
+
+        function createGoogleCalendarUrl(b) {
+            const startISO = b.startDate.replace(/-/g, '') + 'T' + b.startTime.replace(':', '') + '00';
+            const endISO = b.endDate.replace(/-/g, '') + 'T' + b.endTime.replace(':', '') + '00';
+            const title = encodeURIComponent(`【315會議室】${b.title} - ${b.applicant}`);
+            const details = encodeURIComponent(`登記人：${b.applicant}\n單位：${b.dept || '未填寫'}\n備註：${b.remarks || '無'}`);
+            const location = encodeURIComponent('工安處南部辦公室 315 會議室');
+            return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startISO}/${endISO}&details=${details}&location=${location}&ctz=Asia/Taipei`;
+        }
 
         function prepareUpdate(id) {
             fetch('/api/bookings?t=' + Date.now())
@@ -313,7 +317,9 @@
             document.getElementById('userCodeBox').innerText = '';
             document.getElementById('btnSubmit').textContent = '確認送出登記';
             document.getElementById('btnSubmit').className = 'btn btn-primary px-4';
-            initDefaultDateTime();
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('startDate').value = today;
+            document.getElementById('endDate').value = today;
         }
     </script>
 </body>

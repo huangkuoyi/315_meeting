@@ -99,9 +99,6 @@ def delete_booking():
         conn = get_db()
         cur = conn.cursor()
         cur.execute("SELECT emp_id FROM bookings WHERE id = %s;", (booking_id,))
-        target = conn.cursor().fetchone() if hasattr(conn, 'cursor') else None
-        
-        cur.execute("SELECT emp_id FROM bookings WHERE id = %s;", (booking_id,))
         row = cur.fetchone()
         if not row:
             return jsonify({'success': False, 'message': '❌ 找不到該筆預約紀錄！'})
@@ -137,26 +134,36 @@ def get_calendar():
             "PRODID:-//CPC//315 Room//ZH",
             "CALSCALE:GREGORIAN",
             "METHOD:PUBLISH",
-            "X-WR-CALNAME:315會議室登記情形"
+            "X-WR-CALNAME:315會議室登記情形",
+            "X-WR-TIMEZONE:Asia/Taipei",
+            "BEGIN:VTIMEZONE",
+            "TZID:Asia/Taipei",
+            "X-LIC-LOCATION:Asia/Taipei",
+            "BEGIN:STANDARD",
+            "TZOFFSETFROM:+0800",
+            "TZOFFSETTO:+0800",
+            "TZNAME:CST",
+            "DTSTART:19700101T000000",
+            "END:STANDARD",
+            "END:VTIMEZONE"
         ]
 
         for b in rows:
             try:
-                # 轉為標準 ISO 格式
                 s_str = f"{b['startDate']} {b['startTime']}"
                 e_str = f"{b['endDate']} {b['endTime']}"
                 s_dt = datetime.strptime(s_str, "%Y-%m-%d %H:%M").strftime("%Y%m%dT%H%M00")
                 e_dt = datetime.strptime(e_str, "%Y-%m-%d %H:%M").strftime("%Y%m%dT%H%M00")
                 
                 ics_lines.append("BEGIN:VEVENT")
-                ics_lines.append(f"UID:{b['id']}@three15-meeting.onrender.com")
-                ics_lines.append(f"DTSTART:{s_dt}")
-                ics_lines.append(f"DTEND:{e_dt}")
+                ics_lines.append(f"UID:{b['id']}@three15-meeting")
+                ics_lines.append(f"DTSTART;TZID=Asia/Taipei:{s_dt}")
+                ics_lines.append(f"DTEND;TZID=Asia/Taipei:{e_dt}")
                 ics_lines.append(f"SUMMARY:【315會議室】{b['title']} - {b['applicant']}")
-                ics_lines.append(f"DESCRIPTION:申請人：{b['applicant']} (單位：{b['dept'] or '無'}) 備註：{b['remarks'] or '無'}")
+                ics_lines.append(f"DESCRIPTION:登記人：{b['applicant']} (單位：{b['dept'] or '無'}) 備註：{b['remarks'] or '無'}")
                 ics_lines.append("LOCATION:工安處南部辦公室 315 會議室")
                 ics_lines.append("END:VEVENT")
-            except Exception as ex:
+            except Exception:
                 continue
 
         ics_lines.append("END:VCALENDAR")

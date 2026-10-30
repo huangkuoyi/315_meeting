@@ -99,11 +99,14 @@ def delete_booking():
         conn = get_db()
         cur = conn.cursor()
         cur.execute("SELECT emp_id FROM bookings WHERE id = %s;", (booking_id,))
-        target = cur.fetchone()
-        if not target:
+        target = conn.cursor().fetchone() if hasattr(conn, 'cursor') else None
+        
+        cur.execute("SELECT emp_id FROM bookings WHERE id = %s;", (booking_id,))
+        row = cur.fetchone()
+        if not row:
             return jsonify({'success': False, 'message': '❌ 找不到該筆預約紀錄！'})
 
-        if verify_emp_id == '746878' or verify_emp_id == target['emp_id']:
+        if verify_emp_id == '746878' or verify_emp_id == row['emp_id']:
             cur.execute("DELETE FROM bookings WHERE id = %s;", (booking_id,))
             conn.commit()
             msg = '✅ 預約紀錄已成功撤銷！'
@@ -120,7 +123,6 @@ def delete_booking():
 
 @app.route('/calendar.ics', methods=['GET'])
 def get_calendar():
-    """提供 Google Calendar / iOS 訂閱用的 .ics 檔案串流"""
     try:
         conn = get_db()
         cur = conn.cursor()
@@ -129,37 +131,37 @@ def get_calendar():
         cur.close()
         conn.close()
 
-        ics_content = [
+        ics_lines = [
             "BEGIN:VCALENDAR",
             "VERSION:2.0",
-            "PRODID:-//CPC//315 Meeting Room System//ZH",
+            "PRODID:-//CPC//315 Room//ZH",
             "CALSCALE:GREGORIAN",
             "METHOD:PUBLISH",
-            "X-WR-CALNAME:會議室(315)使用登記情形"
+            "X-WR-CALNAME:315會議室登記情形"
         ]
 
         for b in rows:
             try:
-                s_dt = datetime.strptime(f"{b['startDate']} {b['startTime']}", "%Y-%m-%d %H:%M").strftime("%Y%m%dT%H%M00")
-                e_dt = datetime.strptime(f"{b['endDate']} {b['endTime']}", "%Y-%m-%d %H:%M").strftime("%Y%m%dT%H%M00")
-                summary = f"【315會議室】{b['title']} - {b['applicant']}"
-                desc = f"登記人：{b['applicant']}\\n單位：{b['dept'] or '未填寫'}\\n備註：{b['remarks'] or '無'}"
-
-                ics_content.extend([
-                    "BEGIN:VEVENT",
-                    f"UID:{b['id']}@315meeting",
-                    f"DTSTART;TZID=Asia/Taipei:{s_dt}",
-                    f"DTEND;TZID=Asia/Taipei:{e_dt}",
-                    f"SUMMARY:{summary}",
-                    f"DESCRIPTION:{desc}",
-                    "LOCATION:工安處南部辦公室 315 會議室",
-                    "END:VEVENT"
-                ])
-            except Exception:
+                # 轉為標準 ISO 格式
+                s_str = f"{b['startDate']} {b['startTime']}"
+                e_str = f"{b['endDate']} {b['endTime']}"
+                s_dt = datetime.strptime(s_str, "%Y-%m-%d %H:%M").strftime("%Y%m%dT%H%M00")
+                e_dt = datetime.strptime(e_str, "%Y-%m-%d %H:%M").strftime("%Y%m%dT%H%M00")
+                
+                ics_lines.append("BEGIN:VEVENT")
+                ics_lines.append(f"UID:{b['id']}@three15-meeting.onrender.com")
+                ics_lines.append(f"DTSTART:{s_dt}")
+                ics_lines.append(f"DTEND:{e_dt}")
+                ics_lines.append(f"SUMMARY:【315會議室】{b['title']} - {b['applicant']}")
+                ics_lines.append(f"DESCRIPTION:申請人：{b['applicant']} (單位：{b['dept'] or '無'}) 備註：{b['remarks'] or '無'}")
+                ics_lines.append("LOCATION:工安處南部辦公室 315 會議室")
+                ics_lines.append("END:VEVENT")
+            except Exception as ex:
                 continue
 
-        ics_content.append("END:VCALENDAR")
-        return Response("\r\n".join(ics_content), mimetype="text/calendar")
+        ics_lines.append("END:VCALENDAR")
+        response_text = "\r\n".join(ics_lines)
+        return Response(response_text, mimetype="text/calendar", headers={"Content-Disposition": "inline; filename=calendar.ics"})
     except Exception as e:
         return str(e), 500
 

@@ -3,312 +3,216 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>工安處南部辦公室 會議室(315)使用登記系統</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>工安處南部辦公室 - 會議室(315)使用登記系統</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
-        body { font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, sans-serif; background-color: #f8fafc; }
+        body { background-color: #f4f6f9; font-family: "Microsoft JhengHei", sans-serif; }
+        .card-custom { border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: none; }
+        .header-bg { background: linear-gradient(135deg, #0d6efd, #0a58ca); color: white; border-radius: 12px 12px 0 0; padding: 20px; }
+        .table-hover tbody tr:hover { background-color: #f1f5f9; }
+        .btn-action { margin: 2px; }
+        /* 隱密員編：改用 text + CSS 遮罩，防止 Chrome 跳出高強度密碼 */
+        .masked-input { -webkit-text-security: disc; text-security: disc; }
     </style>
 </head>
-<body class="min-h-screen flex flex-col text-slate-800">
-
-    <header class="bg-indigo-600 text-white shadow-md sticky top-0 z-30">
-        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-3">
-            <div class="flex items-center gap-3">
-                <div class="bg-white text-indigo-600 p-2.5 rounded-xl shadow-sm">
-                    <i class="fa-solid fa-door-open text-2xl"></i>
-                </div>
-                <div>
-                    <h1 class="text-xl font-bold tracking-wide">工安處南部辦公室 會議室(315)使用登記系統</h1>
-                    <p class="text-xs text-indigo-200">內部網路雙向即時同步 (24HR 全日開放)</p>
-                </div>
-            </div>
-            <a href="https://calendar.google.com" target="_blank" class="px-3.5 py-2 bg-indigo-500 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg transition flex items-center gap-2 shadow-sm">
-                <i class="fa-regular fa-calendar-check"></i>
-                <span>開啟 Google 行事曆</span>
-            </a>
-        </div>
-    </header>
-
-    <main class="max-w-7xl mx-auto px-4 py-6 flex-grow w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        <section class="lg:col-span-5 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
-            <div>
-                <div class="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
-                    <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2" id="formTitle">
-                        <i class="fa-solid fa-pen-to-square text-indigo-600"></i>
-                        新增會議預約登記
-                    </h2>
-                    <span class="text-xs font-medium bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-full"><i class="fa-solid fa-clock"></i> 24小時開放預約</span>
-                </div>
-
-                <!-- 變更提示 Banner -->
-                <div id="editingBanner" class="hidden mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 flex justify-between items-center">
-                    <span><i class="fa-solid fa-circle-info"></i> 正進行預約時間變更，請修改後送出。</span>
-                    <button type="button" onclick="cancelEditMode()" class="text-amber-600 underline font-semibold">取消變更</button>
-                </div>
-
-                <form id="bookingForm" onsubmit="handleFormSubmit(event)" class="space-y-4" autocomplete="off">
-                    <input type="hidden" id="editingBookingId" value="">
-
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">會議名稱 <span class="text-rose-500">*</span></label>
-                        <input type="text" id="meetingTitle" required placeholder="例如：跨部門週報會議" class="w-full px-3.5 py-2.5 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none">
-                    </div>
-
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+<body class="py-4">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="card card-custom mb-4">
+                    <div class="header-bg d-flex justify-content-between align-items-center flex-wrap">
                         <div>
-                            <label class="block text-xs font-semibold text-slate-600 mb-1">申請人姓名 <span class="text-rose-500">*</span></label>
-                            <input type="text" id="applicantName" required placeholder="例如：張哲銘" class="w-full px-3.5 py-2.5 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <h3 class="mb-1"><i class="bi bi-building-gear me-2"></i>工安處南部辦公室</h3>
+                            <h5 class="mb-0">會議室 (315) 使用登記系統</h5>
                         </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 mb-1">員工編號 <span class="text-rose-500">*</span></label>
-                            <div class="relative">
-                                <input type="password" id="employeeId" required autocomplete="new-password" placeholder="請輸入員編" class="w-full pl-3.5 pr-10 py-2.5 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none">
-                                <button type="button" onclick="toggleEmpIdVisibility()" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 p-1">
-                                    <i id="empIdEyeIcon" class="fa-regular fa-eye"></i>
-                                </button>
+                        <button class="btn btn-light text-primary font-weight-bold mt-2 mt-md-0" onclick="copyCalendarUrl()">
+                            <i class="bi bi-calendar-plus me-1"></i>訂閱 315 全局日曆
+                        </button>
+                    </div>
+                    <div class="card-body p-4">
+                        <h5 class="card-title text-primary mb-3"><i class="bi bi-pencil-square me-2"></i>預約登記表單</h5>
+                        <form id="bookingForm" autocomplete="off">
+                            <input type="hidden" id="bookingId">
+                            <input type="hidden" id="isUpdate" value="false">
+                            
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label font-weight-bold">會議事由 / 名稱 <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="title" placeholder="例如：PSM 審查會議" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">登記人姓名 <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="applicant" placeholder="黃國益" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">員工編號 <span class="text-danger">*</span></label>
+                                    <div class="input-group">
+                                        <!-- 使用 text 屬性配合 masked-input，徹底防禦 Chrome 自動跳高強度密碼 -->
+                                        <input type="text" class="form-control masked-input" id="empId" placeholder="請手動輸入員編" required autocomplete="off" name="emp_id_no_autofill">
+                                        <button class="btn btn-outline-secondary" type="button" id="toggleEmpId">
+                                            <i class="bi bi-eye" id="eyeIcon"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label">所屬部門 / 單位</label>
+                                    <input type="text" class="form-control" id="dept" placeholder="例如：工業安全衛生處">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">備註事項</label>
+                                    <input type="text" class="form-control" id="remarks" placeholder="如需投影機、茶水等需求">
+                                </div>
+
+                                <div class="col-md-3">
+                                    <label class="form-label">開始日期 <span class="text-danger">*</span></label>
+                                    <input type="date" class="form-control" id="startDate" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">開始時間 (24HR) <span class="text-danger">*</span></label>
+                                    <input type="time" class="form-control" id="startTime" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">結束日期 <span class="text-danger">*</span></label>
+                                    <input type="date" class="form-control" id="endDate" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">結束時間 (24HR) <span class="text-danger">*</span></label>
+                                    <input type="time" class="form-control" id="endTime" required>
+                                </div>
                             </div>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 mb-1">單位名稱</label>
-                            <input type="text" id="department" placeholder="工安處" class="w-full px-3.5 py-2.5 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none">
-                        </div>
-                    </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 mb-1">開始日期 <span class="text-rose-500">*</span></label>
-                            <input type="date" id="startDate" required onchange="handleStartDateChange()" class="w-full px-3.5 py-2.5 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 mb-1">開始時間 <span class="text-rose-500">*</span></label>
-                            <select id="startTime" required onchange="renderTimeline()" class="w-full px-3.5 py-2.5 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none"></select>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 mb-1">結束日期 <span class="text-rose-500">*</span></label>
-                            <input type="date" id="endDate" required onchange="renderTimeline()" class="w-full px-3.5 py-2.5 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 mb-1">結束時間 <span class="text-rose-500">*</span></label>
-                            <select id="endTime" required onchange="renderTimeline()" class="w-full px-3.5 py-2.5 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none"></select>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1.5">快速點選熱門時段</label>
-                        <div class="flex flex-wrap gap-1.5">
-                            <button type="button" onclick="setQuickTime('08:00', '12:00')" class="px-2.5 py-1 text-xs bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 rounded border border-slate-200">上午場 (08:00-12:00)</button>
-                            <button type="button" onclick="setQuickTime('13:00', '17:00')" class="px-2.5 py-1 text-xs bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 rounded border border-slate-200">下午場 (13:00-17:00)</button>
-                            <button type="button" onclick="setQuickTime('08:00', '17:00')" class="px-2.5 py-1 text-xs bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 rounded border border-slate-200">全天 (08:00-17:00)</button>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">備註說明 (選填)</label>
-                        <input type="text" id="remarks" placeholder="需調整排椅、投影設備等" class="w-full px-3.5 py-2.5 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none">
-                    </div>
-
-                    <button type="submit" id="submitBtn" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow-md transition flex items-center justify-center gap-2 text-sm mt-2">
-                        <i class="fa-solid fa-paper-plane"></i>
-                        <span id="submitBtnText">送出登記 (預約315)</span>
-                    </button>
-                </form>
-            </div>
-            
-            <div class="mt-6 pt-4 border-t border-slate-100 text-xs text-slate-400 flex items-center justify-between">
-                <span>管理員：黃國益</span>
-                <span class="text-emerald-600 font-medium"><i class="fa-solid fa-shield-halved"></i> 具變更/刪除驗證權限</span>
-            </div>
-        </section>
-
-        <section class="lg:col-span-7 space-y-6">
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-4 mb-4 border-b border-slate-100">
-                    <div>
-                        <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                            <i class="fa-regular fa-calendar-days text-indigo-600"></i>
-                            當日 24 小時登記檢視表
-                        </h3>
-                        <p class="text-xs text-slate-500 mt-0.5" id="currentViewDateText">請選擇日期檢視佔用情形</p>
+                            <div class="mt-4 text-end">
+                                <button type="button" class="btn btn-secondary me-2" id="btnReset" onclick="resetForm()">重設清空</button>
+                                <button type="submit" class="btn btn-primary px-4" id="btnSubmit">確認送出登記</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
 
-                <div id="dayTimeline" class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-1.5 py-2"></div>
-            </div>
-
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-4 mb-4 border-b border-slate-100">
-                    <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                        <i class="fa-solid fa-list-check text-indigo-600"></i>
-                        會議登記紀錄明細
-                    </h3>
+                <div class="card card-custom">
+                    <div class="card-body p-4">
+                        <h5 class="card-title text-primary mb-3"><i class="bi bi-calendar3 me-2"></i>即時預約檢視表</h5>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>預約時間區段</th>
+                                        <th>會議事由</th>
+                                        <th>登記人 (單位)</th>
+                                        <th>備註</th>
+                                        <th class="text-center">操作變更</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="bookingTableBody">
+                                    <tr><td colspan="5" class="text-center text-muted">讀取中...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left text-xs border-collapse">
-                        <thead>
-                            <tr class="bg-slate-50 text-slate-500 border-b border-slate-200">
-                                <th class="p-3">開始時間</th>
-                                <th class="p-3">結束時間</th>
-                                <th class="p-3">會議名稱 / 備註</th>
-                                <th class="p-3">申請人 / 單位</th>
-                                <th class="p-3 text-center">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="recordsTableBody"></tbody>
-                    </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 驗證員編彈窗 -->
+    <div class="modal fade" id="verifyModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">身份驗證</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="verifyMsg">請輸入您的員工編號以執行此操作：</p>
+                    <input type="text" class="form-control masked-input" id="verifyEmpId" placeholder="輸入員編" autocomplete="off">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-danger" id="btnConfirmAction">確認執行</button>
                 </div>
             </div>
-        </section>
-    </main>
+        </div>
+    </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        const TIME_OPTIONS = [];
-        for (let i = 0; i <= 24; i++) {
-            const hour = i < 10 ? `0${i}:00` : `${i}:00`;
-            TIME_OPTIONS.push(hour);
-        }
+        let currentTargetId = '';
 
-        let bookings = [];
+        document.addEventListener('DOMContentLoaded', () => {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('startDate').value = today;
+            document.getElementById('endDate').value = today;
+            
+            document.getElementById('startDate').addEventListener('change', (e) => {
+                document.getElementById('endDate').value = e.target.value;
+            });
 
-        document.addEventListener("DOMContentLoaded", () => {
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            const day = String(now.getDate()).padStart(2, '0');
-            const todayStr = `${year}-${month}-${day}`;
+            document.getElementById('toggleEmpId').addEventListener('click', () => {
+                const empInput = document.getElementById('empId');
+                const eyeIcon = document.getElementById('eyeIcon');
+                if (empInput.classList.contains('masked-input')) {
+                    empInput.classList.remove('masked-input');
+                    eyeIcon.className = 'bi bi-eye-slash';
+                } else {
+                    empInput.classList.add('masked-input');
+                    eyeIcon.className = 'bi bi-eye';
+                }
+            });
 
-            document.getElementById("startDate").value = todayStr;
-            document.getElementById("endDate").value = todayStr;
-            document.getElementById("employeeId").value = "";
-
-            populateTimeSelects();
-            document.getElementById("startTime").value = "08:00";
-            document.getElementById("endTime").value = "12:00";
-
-            fetchBookings();
+            loadBookings();
         });
 
-        function populateTimeSelects() {
-            const startSelect = document.getElementById("startTime");
-            const endSelect = document.getElementById("endTime");
-            startSelect.innerHTML = "";
-            endSelect.innerHTML = "";
-
-            TIME_OPTIONS.forEach(t => {
-                if (t !== "24:00") startSelect.innerHTML += `<option value="${t}">${t}</option>`;
-                if (t !== "00:00") endSelect.innerHTML += `<option value="${t}">${t}</option>`;
-            });
-        }
-
-        function handleStartDateChange() {
-            const sDate = document.getElementById("startDate").value;
-            document.getElementById("endDate").value = sDate;
-            renderTimeline();
-        }
-
-        function setQuickTime(start, end) {
-            document.getElementById("startTime").value = start;
-            document.getElementById("endTime").value = end;
-            renderTimeline();
-        }
-
-        function toggleEmpIdVisibility() {
-            const empInput = document.getElementById("employeeId");
-            const eyeIcon = document.getElementById("empIdEyeIcon");
-            if (empInput.type === "password") {
-                empInput.type = "text";
-                eyeIcon.className = "fa-regular fa-eye-slash";
-            } else {
-                empInput.type = "password";
-                eyeIcon.className = "fa-regular fa-eye";
-            }
-        }
-
-        function fetchBookings() {
+        function loadBookings() {
             fetch('/api/bookings')
                 .then(res => res.json())
                 .then(data => {
-                    if(data.success) {
-                        bookings = data.bookings;
-                        renderTimeline();
-                        renderRecords();
+                    if (data.success) {
+                        renderTable(data.bookings);
                     }
                 });
         }
 
-        function editBooking(id) {
-            const item = bookings.find(b => b.id === id);
-            if (!item) return;
-
-            document.getElementById("editingBookingId").value = item.id;
-            document.getElementById("meetingTitle").value = item.title;
-            document.getElementById("applicantName").value = item.applicant;
-            document.getElementById("employeeId").value = "";
-            document.getElementById("department").value = item.dept || "";
-            document.getElementById("startDate").value = item.startDate;
-            document.getElementById("startTime").value = item.startTime;
-            document.getElementById("endDate").value = item.endDate;
-            document.getElementById("endTime").value = item.endTime;
-            document.getElementById("remarks").value = item.remarks || "";
-
-            document.getElementById("formTitle").innerHTML = `<i class="fa-solid fa-pen-to-square text-amber-500"></i> 變更會議時段`;
-            document.getElementById("submitBtn").className = "w-full py-3 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-lg shadow-md transition flex items-center justify-center gap-2 text-sm mt-2";
-            document.getElementById("submitBtnText").innerText = "確認變更預約 (需驗證員編)";
-            document.getElementById("editingBanner").classList.remove("hidden");
-
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            renderTimeline();
-        }
-
-        function cancelEditMode() {
-            document.getElementById("editingBookingId").value = "";
-            document.getElementById("meetingTitle").value = "";
-            document.getElementById("applicantName").value = "";
-            document.getElementById("employeeId").value = "";
-            document.getElementById("remarks").value = "";
-
-            document.getElementById("formTitle").innerHTML = `<i class="fa-solid fa-pen-to-square text-indigo-600"></i> 新增會議預約登記`;
-            document.getElementById("submitBtn").className = "w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow-md transition flex items-center justify-center gap-2 text-sm mt-2";
-            document.getElementById("submitBtnText").innerText = "送出登記 (預約315)";
-            document.getElementById("editingBanner").classList.add("hidden");
-        }
-
-        function handleFormSubmit(e) {
-            e.preventDefault();
-            const editingId = document.getElementById("editingBookingId").value;
-            const isUpdate = Boolean(editingId);
-
-            const sDate = document.getElementById("startDate").value;
-            const eDate = document.getElementById("endDate").value;
-            let sTime = document.getElementById("startTime").value;
-            let eTime = document.getElementById("endTime").value;
-
-            const startDT = new Date(`${sDate}T${sTime}`);
-            let endDT = eTime === "24:00" ? new Date(`${eDate}T23:59:59`) : new Date(`${eDate}T${eTime}`);
-
-            if (endDT <= startDT) {
-                alert("❌ 結束時間必須晚於開始時間！");
+        function renderTable(bookings) {
+            const tbody = document.getElementById('bookingTableBody');
+            if (bookings.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">目前尚無預約登記紀錄</td></tr>';
                 return;
             }
 
+            tbody.innerHTML = bookings.map(b => `
+                <tr>
+                    <td>
+                        <span class="badge bg-primary me-1">${b.startDate}</span> ${b.startTime} <br>
+                        <span class="badge bg-secondary me-1">${b.endDate}</span> ${b.endTime}
+                    </td>
+                    <td class="fw-bold">${b.title}</td>
+                    <td>${b.applicant} ${b.dept ? `(${b.dept})` : ''}</td>
+                    <td>${b.remarks || '-'}</td>
+                    <td class="text-center">
+                        <button class="btn btn-sm btn-outline-warning btn-action" onclick="prepareUpdate('${b.id}')">變更</button>
+                        <button class="btn btn-sm btn-outline-danger btn-action" onclick="prepareDelete('${b.id}')">撤銷</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        document.getElementById('bookingForm').addEventListener('submit', (e) => {
+            e.preventDefault();
             const payload = {
-                id: isUpdate ? editingId : 'bk_' + Date.now(),
-                isUpdate: isUpdate,
-                title: document.getElementById("meetingTitle").value.trim(),
-                applicant: document.getElementById("applicantName").value.trim(),
-                empId: document.getElementById("employeeId").value.trim(),
-                dept: document.getElementById("department").value.trim(),
-                startDate: sDate,
-                startTime: sTime,
-                endDate: eDate,
-                endTime: eTime,
-                remarks: document.getElementById("remarks").value.trim()
+                id: document.getElementById('bookingId').value || 'b_' + Date.now(),
+                title: document.getElementById('title').value,
+                applicant: document.getElementById('applicant').value,
+                empId: document.getElementById('empId').value,
+                dept: document.getElementById('dept').value,
+                startDate: document.getElementById('startDate').value,
+                startTime: document.getElementById('startTime').value,
+                endDate: document.getElementById('endDate').value,
+                endTime: document.getElementById('endTime').value,
+                remarks: document.getElementById('remarks').value,
+                isUpdate: document.getElementById('isUpdate').value === 'true'
             };
 
             fetch('/api/bookings', {
@@ -317,91 +221,101 @@
                 body: JSON.stringify(payload)
             })
             .then(res => res.json())
-            .then(res => {
-                alert(res.message);
-                if(res.success) {
-                    cancelEditMode();
-                    fetchBookings();
-                }
-            });
-        }
-
-        function renderTimeline() {
-            const viewDate = document.getElementById("startDate").value;
-            document.getElementById("currentViewDateText").innerText = `目前檢視日期：${viewDate}`;
-            const container = document.getElementById("dayTimeline");
-            container.innerHTML = "";
-
-            const hourlySlots = TIME_OPTIONS.slice(0, 24);
-
-            hourlySlots.forEach(slotHour => {
-                const slotStart = new Date(`${viewDate}T${slotHour}`);
-                const booking = bookings.find(b => {
-                    const bStart = new Date(`${b.startDate}T${b.startTime}`);
-                    let bEnd = b.endTime === "24:00" ? new Date(`${b.endDate}T23:59:59`) : new Date(`${b.endDate}T${b.endTime}`);
-                    return slotStart >= bStart && slotStart < bEnd;
-                });
-
-                const card = document.createElement("div");
-                card.className = "p-1.5 rounded-lg border text-center text-xs flex flex-col justify-between min-h-[58px] transition ";
-
-                if (booking) {
-                    card.className += "bg-rose-50 border-rose-200 text-rose-800";
-                    card.innerHTML = `
-                        <div class="font-bold text-[10px] border-b border-rose-200/60 pb-0.5">${slotHour}</div>
-                        <div class="font-semibold text-[9px] truncate mt-0.5" title="${booking.title}">${booking.title}</div>
-                        <div class="text-[9px] text-rose-600 font-medium truncate">${booking.applicant}</div>
-                    `;
+            .then(data => {
+                if (data.success) {
+                    // 自動生成直跳 Google 行事曆的網址
+                    const gCalUrl = createGoogleCalendarUrl(payload);
+                    if (confirm(data.message + '\n\n是否立即將此筆預約加入您的 Google 行事曆？')) {
+                        window.open(gCalUrl, '_blank');
+                    }
+                    resetForm();
+                    loadBookings();
                 } else {
-                    card.className += "bg-emerald-50/60 border-emerald-200 text-emerald-800";
-                    card.innerHTML = `
-                        <div class="font-bold text-[10px] border-b border-emerald-200/60 pb-0.5">${slotHour}</div>
-                        <div class="text-[9px] text-emerald-600 mt-1"><i class="fa-solid fa-circle-check"></i> 可登記</div>
-                    `;
+                    alert(data.message);
                 }
-                container.appendChild(card);
             });
+        });
+
+        function createGoogleCalendarUrl(b) {
+            const startISO = b.startDate.replace(/-/g, '') + 'T' + b.startTime.replace(':', '') + '00';
+            const endISO = b.endDate.replace(/-/g, '') + 'T' + b.endTime.replace(':', '') + '00';
+            const title = encodeURIComponent(`【315會議室】${b.title} - ${b.applicant}`);
+            const details = encodeURIComponent(`登記人：${b.applicant}\n單位：${b.dept || '未填寫'}\n備註：${b.remarks || '無'}`);
+            const location = encodeURIComponent('工安處南部辦公室 315 會議室');
+            return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startISO}/${endISO}&details=${details}&location=${location}&ctz=Asia/Taipei`;
         }
 
-        function renderRecords() {
-            const tbody = document.getElementById("recordsTableBody");
-            tbody.innerHTML = "";
-
-            bookings.forEach(item => {
-                const tr = document.createElement("tr");
-                tr.className = "border-b border-slate-100 hover:bg-slate-50 transition";
-                tr.innerHTML = `
-                    <td class="p-3 font-medium text-slate-700 whitespace-nowrap">${item.startDate} ${item.startTime}</td>
-                    <td class="p-3 font-medium text-indigo-600 whitespace-nowrap">${item.endDate} ${item.endTime}</td>
-                    <td class="p-3"><div class="font-medium text-slate-800">${item.title}</div>
-                        ${item.remarks ? `<div class="text-[11px] text-slate-400">${item.remarks}</div>` : ''}
-                    </td>
-                    <td class="p-3 whitespace-nowrap">
-                        <span class="font-medium text-slate-700">${item.applicant}</span>
-                        ${item.dept ? `<span class="block text-[10px] text-slate-400">${item.dept}</span>` : ''}
-                    </td>
-                    <td class="p-3 text-center whitespace-nowrap flex justify-center gap-1">
-                        <button onclick="editBooking('${item.id}')" class="p-1.5 text-slate-400 hover:text-amber-600 transition" title="變更時間/時段"><i class="fa-solid fa-pen text-sm"></i></button>
-                        <button onclick="deleteBooking('${item.id}')" class="p-1.5 text-slate-400 hover:text-rose-600 transition" title="撤銷預約"><i class="fa-regular fa-trash-can text-sm"></i></button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
+        function prepareUpdate(id) {
+            fetch('/api/bookings')
+                .then(res => res.json())
+                .then(data => {
+                    const b = data.bookings.find(item => item.id === id);
+                    if (b) {
+                        document.getElementById('bookingId').value = b.id;
+                        document.getElementById('isUpdate').value = 'true';
+                        document.getElementById('title').value = b.title;
+                        document.getElementById('applicant').value = b.applicant;
+                        document.getElementById('empId').value = ''; 
+                        document.getElementById('dept').value = b.dept || '';
+                        document.getElementById('startDate').value = b.startDate;
+                        document.getElementById('startTime').value = b.startTime;
+                        document.getElementById('endDate').value = b.endDate;
+                        document.getElementById('endTime').value = b.endTime;
+                        document.getElementById('remarks').value = b.remarks || '';
+                        
+                        document.getElementById('btnSubmit').textContent = '確認變更預約';
+                        document.getElementById('btnSubmit').className = 'btn btn-warning px-4';
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                });
         }
 
-        function deleteBooking(id) {
-            const empId = prompt("請輸入您的員工編號進行撤銷驗證：");
-            if (!empId) return;
+        function prepareDelete(id) {
+            currentTargetId = id;
+            document.getElementById('verifyEmpId').value = '';
+            const modal = new bootstrap.Modal(document.getElementById('verifyModal'));
+            modal.show();
+        }
+
+        document.getElementById('btnConfirmAction').addEventListener('click', () => {
+            const verifyEmpId = document.getElementById('verifyEmpId').value;
+            if (!verifyEmpId) {
+                alert('請輸入員工編號！');
+                return;
+            }
 
             fetch('/api/bookings/delete', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: id, verifyEmpId: empId })
+                body: JSON.stringify({ id: currentTargetId, verifyEmpId: verifyEmpId })
             })
             .then(res => res.json())
-            .then(res => {
-                alert(res.message);
-                if (res.success) fetchBookings();
+            .then(data => {
+                alert(data.message);
+                if (data.success) {
+                    const modalEl = document.getElementById('verifyModal');
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    modal.hide();
+                    loadBookings();
+                }
+            });
+        });
+
+        function resetForm() {
+            document.getElementById('bookingForm').reset();
+            document.getElementById('bookingId').value = '';
+            document.getElementById('isUpdate').value = 'false';
+            document.getElementById('btnSubmit').textContent = '確認送出登記';
+            document.getElementById('btnSubmit').className = 'btn btn-primary px-4';
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('startDate').value = today;
+            document.getElementById('endDate').value = today;
+        }
+
+        function copyCalendarUrl() {
+            const calUrl = window.location.origin + '/calendar.ics';
+            navigator.clipboard.writeText(calUrl).then(() => {
+                alert('已複製 315 會議室全局日曆訂閱網址！\n\n請至 Google 日曆「其他日曆 +」->「加入日曆網址」貼上即可建立自動同步日曆。');
             });
         }
     </script>

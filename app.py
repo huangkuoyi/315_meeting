@@ -1,152 +1,168 @@
-import sys
 import os
-from flask import Flask, request, jsonify, render_template_string
+from flask import Flask, request, jsonify, render_template, Response
 from flask_cors import CORS
-import sqlite3
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from datetime import datetime
 
-if getattr(sys, 'frozen', False):
-    template_folder = sys._MEIPASS
-else:
-    template_folder = os.path.dirname(os.path.abspath(__file__))
-
-app = Flask(__name__, template_folder=template_folder)
+app = Flask(__name__, template_folder='.')
 CORS(app)
 
-DB_FILE = "meeting_315.db"
-ADMIN_EMP_ID = "746878"
+DB_URL = os.environ.get('DATABASE_URL')
 
-def init_db():
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS bookings (
-            id TEXT PRIMARY KEY,
-            title TEXT,
-            applicant TEXT,
-            empId TEXT,
-            dept TEXT,
-            startDate TEXT,
-            startTime TEXT,
-            endDate TEXT,
-            endTime TEXT,
-            remarks TEXT
-        )
-    ''')
-    conn.commit()
-    conn.close()
+def get_db():
+    return psycopg2.connect(DB_URL, cursor_factory=RealDictCursor)
 
-init_db()
+def init_and_clean_db():
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("SELECT clean_old_bookings();")
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print(f"Database init error: {e}")
 
 @app.route('/')
 def index():
-    html_path = os.path.join(template_folder, 'index.html')
-    with open(html_path, 'r', encoding='utf-8') as f:
-        html_content = f.read()
-    return render_template_string(html_content)
+    return render_template('index.html')
 
 @app.route('/api/bookings', methods=['GET'])
 def get_bookings():
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute('SELECT id, title, applicant, empId, dept, startDate, startTime, endDate, endTime, remarks FROM bookings')
-    rows = c.fetchall()
-    conn.close()
-    
-    data = []
-    for r in rows:
-        data.append({
-            "id": r[0], "title": r[1], "applicant": r[2], "empId": r[3],
-            "dept": r[4], "startDate": r[5], "startTime": r[6],
-            "endDate": r[7], "endTime": r[8], "remarks": r[9]
-        })
-    return jsonify({"success": True, "bookings": data})
+    try:
+        init_and_clean_db()
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("SELECT id, title, applicant, dept, start_date::text as \"startDate\", start_time as \"startTime\", end_date::text as \"endDate\", end_time as \"endTime\", remarks FROM bookings ORDER BY start_date ASC, start_time ASC;")
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        return jsonify({'success': True, 'bookings': list(rows)})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/api/bookings', methods=['POST'])
-def add_or_update_booking():
-    req = request.json
-    booking_id = req['id']
-    is_update = req.get('isUpdate', False)
-    
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    
-    # 若為修改，驗證原員編或管理員員編
-    if is_update:
-        c.execute('SELECT empId FROM bookings WHERE id = ?', (booking_id,))
-        row = c.fetchone()
-        if not row:
+def save_booking():
+    data = request.json
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT id FROM bookings 
+            WHERE id != %s 
+              AND start_date <= %s AND end_date >= %s
+              AND NOT (end_time <= %s OR start_time >= %s);
+        """, (data.get('id'), data.get('endDate'), data.get('startDate'), data.get('startTime'), data.get('endTime')))
+        
+        if cur.fetchone():
+            cur.close()
             conn.close()
-            return jsonify({"success": False, "message": "❌ 找不到原預約紀錄！"})
-        if req['empId'] != row[0] and req['empId'] != ADMIN_EMP_ID:
-            conn.close()
-            return jsonify({"success": False, "message": "❌ 員工編號不符合原申請人或管理員，無法變更預約！"})
+            return jsonify({'success': False, 'message': '❌ 該時段已被預約，請選擇其他時間！'})
 
-    # 衝突檢查（排除自身紀錄）
-    c.execute('SELECT id, startDate, startTime, endDate, endTime FROM bookings')
-    existing = c.fetchall()
-    
-    new_start = f"{req['startDate']} {req['startTime']}"
-    new_end = f"{req['endDate']} {req['endTime']}"
-    
-    for row in existing:
-        if is_update and row[0] == booking_id:
-            continue
-        e_start = f"{row[1]} {row[2]}"
-        e_end = f"{row[3]} {row[4]}"
-        if not (new_end <= e_start or new_start >= e_end):
-            conn.close()
-            return jsonify({"success": False, "message": "⚠️ 所選的新時段已被其他人預約，請選擇其他時間！"})
+        if data.get('isUpdate'):
+            cur.execute("SELECT emp_id FROM bookings WHERE id = %s;", (data.get('id'),))
+            target = cur.fetchone()
+            if not target:
+                return jsonify({'success': False, 'message': '❌ 找不到欲變更的預約紀錄！'})
+            if data.get('empId') != '746878' and data.get('empId') != target['emp_id']:
+                return jsonify({'success': False, 'message': '❌ 員工編號驗證失敗！無法變更此預約。'})
 
-    if is_update:
-        c.execute('''
-            UPDATE bookings 
-            SET title=?, applicant=?, empId=?, dept=?, startDate=?, startTime=?, endDate=?, endTime=?, remarks=?
-            WHERE id=?
-        ''', (
-            req['title'], req['applicant'], req['empId'], req['dept'],
-            req['startDate'], req['startTime'], req['endDate'], req['endTime'],
-            req['remarks'], booking_id
-        ))
-        msg = "✅ 會議預約日期時段已順利變更！"
-    else:
-        c.execute('''
-            INSERT INTO bookings VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            booking_id, req['title'], req['applicant'], req['empId'],
-            req['dept'], req['startDate'], req['startTime'],
-            req['endDate'], req['endTime'], req['remarks']
-        ))
-        msg = "✅ 會議預約登記成功！"
+            cur.execute("""
+                UPDATE bookings 
+                SET title=%s, applicant=%s, emp_id=%s, dept=%s, start_date=%s, start_time=%s, end_date=%s, end_time=%s, remarks=%s
+                WHERE id=%s;
+            """, (data.get('title'), data.get('applicant'), data.get('empId'), data.get('dept'),
+                  data.get('startDate'), data.get('startTime'), data.get('endDate'), data.get('endTime'), data.get('remarks'), data.get('id')))
+            msg = '✅ 預約變更成功！'
+        else:
+            cur.execute("""
+                INSERT INTO bookings (id, title, applicant, emp_id, dept, start_date, start_time, end_date, end_time, remarks)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
+            """, (data.get('id'), data.get('title'), data.get('applicant'), data.get('empId'), data.get('dept'),
+                  data.get('startDate'), data.get('startTime'), data.get('endDate'), data.get('endTime'), data.get('remarks')))
+            msg = '✅ 會議室預約登記成功！'
 
-    conn.commit()
-    conn.close()
-    return jsonify({"success": True, "message": msg})
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({'success': True, 'message': msg})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/api/bookings/delete', methods=['POST'])
 def delete_booking():
-    req = request.json
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    
-    c.execute('SELECT empId FROM bookings WHERE id = ?', (req['id'],))
-    row = c.fetchone()
-    if not row:
+    data = request.json
+    booking_id = data.get('id')
+    verify_emp_id = data.get('verifyEmpId')
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("SELECT emp_id FROM bookings WHERE id = %s;", (booking_id,))
+        target = cur.fetchone()
+        if not target:
+            return jsonify({'success': False, 'message': '❌ 找不到該筆預約紀錄！'})
+
+        if verify_emp_id == '746878' or verify_emp_id == target['emp_id']:
+            cur.execute("DELETE FROM bookings WHERE id = %s;", (booking_id,))
+            conn.commit()
+            msg = '✅ 預約紀錄已成功撤銷！'
+            success = True
+        else:
+            msg = '❌ 員工編號驗證失敗！無法撤銷預約。'
+            success = False
+
+        cur.close()
         conn.close()
-        return jsonify({"success": False, "message": "找不到該筆資料"})
-        
-    if req['verifyEmpId'] == row[0] or req['verifyEmpId'] == ADMIN_EMP_ID:
-        c.execute('DELETE FROM bookings WHERE id = ?', (req['id'],))
-        conn.commit()
+        return jsonify({'success': success, 'message': msg})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/calendar.ics', methods=['GET'])
+def get_calendar():
+    """提供 Google Calendar / iOS 訂閱用的 .ics 檔案串流"""
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("SELECT id, title, applicant, dept, start_date::text as \"startDate\", start_time as \"startTime\", end_date::text as \"endDate\", end_time as \"endTime\", remarks FROM bookings;")
+        rows = cur.fetchall()
+        cur.close()
         conn.close()
-        return jsonify({"success": True, "message": "🗑️ 會議預約已成功撤銷！"})
-    else:
-        conn.close()
-        return jsonify({"success": False, "message": "❌ 員工編號不符合，無權限刪除！"})
+
+        ics_content = [
+            "BEGIN:VCALENDAR",
+            "VERSION:2.0",
+            "PRODID:-//CPC//315 Meeting Room System//ZH",
+            "CALSCALE:GREGORIAN",
+            "METHOD:PUBLISH",
+            "X-WR-CALNAME:會議室(315)使用登記情形"
+        ]
+
+        for b in rows:
+            try:
+                s_dt = datetime.strptime(f"{b['startDate']} {b['startTime']}", "%Y-%m-%d %H:%M").strftime("%Y%m%dT%H%M00")
+                e_dt = datetime.strptime(f"{b['endDate']} {b['endTime']}", "%Y-%m-%d %H:%M").strftime("%Y%m%dT%H%M00")
+                summary = f"【315會議室】{b['title']} - {b['applicant']}"
+                desc = f"登記人：{b['applicant']}\\n單位：{b['dept'] or '未填寫'}\\n備註：{b['remarks'] or '無'}"
+
+                ics_content.extend([
+                    "BEGIN:VEVENT",
+                    f"UID:{b['id']}@315meeting",
+                    f"DTSTART;TZID=Asia/Taipei:{s_dt}",
+                    f"DTEND;TZID=Asia/Taipei:{e_dt}",
+                    f"SUMMARY:{summary}",
+                    f"DESCRIPTION:{desc}",
+                    "LOCATION:工安處南部辦公室 315 會議室",
+                    "END:VEVENT"
+                ])
+            except Exception:
+                continue
+
+        ics_content.append("END:VCALENDAR")
+        return Response("\r\n".join(ics_content), mimetype="text/calendar")
+    except Exception as e:
+        return str(e), 500
 
 if __name__ == '__main__':
-    print("==================================================")
-    print("  工安處南部辦公室 會議室(315)使用登記系統 伺服器啟動中...")
-    print("  開放時間：24小時全日開放 (支援即時修改與撤銷)")
-    print("  請勿關閉此視窗，關閉後內網將無法連線登錄。")
-    print("==================================================")
-    app.run(host='0.0.0.0', port=5000)
+    port = int(os.environ.get('PORT', 8080))
+    app.run(host='0.0.0.0', port=port)

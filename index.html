@@ -12,31 +12,10 @@
         .header-bg { background: linear-gradient(135deg, #0d6efd, #0a58ca); color: white; border-radius: 12px 12px 0 0; padding: 20px; }
         .table-hover tbody tr:hover { background-color: #f1f5f9; }
         .btn-action { margin: 2px; }
-        
-        /* 徹底防止 Chrome 自動彈出高強度密碼的自訂編輯盒 */
         .div-input-box {
-            display: block;
-            width: 100%;
-            padding: 0.375rem 0.75rem;
-            font-size: 1rem;
-            font-weight: 400;
-            line-height: 1.5;
-            color: #212529;
-            background-color: #fff;
-            background-clip: padding-box;
-            border: 1px solid #ced4da;
-            border-radius: 0.375rem;
-            min-height: 38px;
-            outline: none;
+            display: block; width: 100%; padding: 0.375rem 0.75rem; font-size: 1rem; font-weight: 400; line-height: 1.5; color: #212529; background-color: #fff; border: 1px solid #ced4da; border-radius: 0.375rem; min-height: 38px; outline: none;
         }
-        .div-input-box:focus {
-            border-color: #86b7fe;
-            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-        }
-        .div-input-box.masked {
-            -webkit-text-security: disc !important;
-            text-security: disc !important;
-        }
+        .div-input-box.masked { -webkit-text-security: disc !important; text-security: disc !important; }
     </style>
 </head>
 <body class="py-4">
@@ -50,7 +29,7 @@
                             <h5 class="mb-0">會議室 (315) 使用登記系統</h5>
                         </div>
                         <button class="btn btn-light text-primary fw-bold mt-2 mt-md-0" onclick="copyCalendarUrl()">
-                            <i class="bi bi-calendar-plus me-1"></i>複製 Google 日曆訂閱網址
+                            <i class="bi bi-calendar-plus me-1"></i>複製日曆動態訂閱網址 (.ics)
                         </button>
                     </div>
                     <div class="card-body p-4">
@@ -61,7 +40,7 @@
                             
                             <div class="row g-3">
                                 <div class="col-md-6">
-                                    <label class="form-label font-weight-bold">會議事由 / 名稱 <span class="text-danger">*</span></label>
+                                    <label class="form-label fw-bold">會議事由 / 名稱 <span class="text-danger">*</span></label>
                                     <input type="text" class="form-control" id="title" placeholder="例如：PSM 審查會議" required>
                                 </div>
                                 <div class="col-md-3">
@@ -71,8 +50,7 @@
                                 <div class="col-md-3">
                                     <label class="form-label">員工編號 <span class="text-danger">*</span></label>
                                     <div class="input-group">
-                                        <!-- 改用 DIV 自訂盒，非 input 標籤，100% 免疫 Chrome 密碼彈鎖 -->
-                                        <div id="userCodeBox" class="div-input-box masked" contenteditable="true" role="textbox" aria-placeholder="手動輸入員編"></div>
+                                        <div id="userCodeBox" class="div-input-box masked" contenteditable="true" role="textbox"></div>
                                         <button class="btn btn-outline-secondary" type="button" id="toggleEmpId">
                                             <i class="bi bi-eye" id="eyeIcon"></i>
                                         </button>
@@ -109,8 +87,8 @@
                             <div class="mt-4 d-flex justify-content-between align-items-center flex-wrap">
                                 <div class="form-check me-3">
                                     <input class="form-check-input" type="checkbox" id="autoAddToGCal" checked>
-                                    <label class="form-check-label text-muted" for="autoAddToGCal">
-                                        登記成功後自動開啟 Google 行事曆頁面加入
+                                    <label class="form-check-label text-primary fw-bold" for="autoAddToGCal">
+                                        預約成功後，自動跳轉並將此會議寫入我的 Google 行事曆
                                     </label>
                                 </div>
                                 <div>
@@ -349,9 +327,9 @@
         }
 
         function copyCalendarUrl() {
-            const calUrl = window.location.origin + '/calendar.ics';
+            const calUrl = 'https://three15-meeting.onrender.com/calendar.ics';
             navigator.clipboard.writeText(calUrl).then(() => {
-                alert('已複製 315 會議室全局日曆訂閱網址！\n\n請至 Google 日曆「其他日曆 +」->「加入日曆網址」貼上即可建立自動同步日曆。');
+                alert('已複製真正的 315 會議室訂閱網址：\n' + calUrl + '\n\n請至 Google 日曆刪除舊的日曆，重新「加入日曆網址」貼上即可！');
             });
         }
     </script>

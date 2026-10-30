@@ -1,4 +1,7 @@
 import os
+import smtplib
+from email.mime.text import MIMEText
+from email.header import Header
 from flask import Flask, request, jsonify, render_template, Response
 from flask_cors import CORS
 import psycopg2
@@ -9,9 +12,50 @@ app = Flask(__name__, template_folder='.')
 CORS(app)
 
 DB_URL = os.environ.get('DATABASE_URL')
+MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
+MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
+ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'h.kuoyi@gmail.com')
 
 def get_db():
     return psycopg2.connect(DB_URL, cursor_factory=RealDictCursor)
+
+def send_notification_email(action_type, booking_data):
+    """發送預約變動通知信給管理者"""
+    if not MAIL_USERNAME or not MAIL_PASSWORD:
+        print("未設定 Email 帳密，跳過寄信通知。")
+        return
+
+    try:
+        subject = f"【315會議室預約通知】{action_type} - {booking_data.get('title')} ({booking_data.get('applicant')})"
+        
+        body = f"""黃大哥 您好，
+
+315 會議室預約系統有最新動態：
+
+📌 異動類型：{action_type}
+📌 會議名稱：{booking_data.get('title')}
+📌 申 請 人：{booking_data.get('applicant')} ({booking_data.get('dept') or '未填寫單位'})
+📌 預約時間：{booking_data.get('startDate')} {booking_data.get('startTime')} ～ {booking_data.get('endDate')} {booking_data.get('endTime')}
+📌 備註事項：{booking_data.get('remarks') or '無'}
+
+---
+本信件由 315 會議室預約系統自動發送。
+"""
+
+        msg = MIMEText(body, 'plain', 'utf-8')
+        msg['Subject'] = Header(subject, 'utf-8')
+        msg['From'] = MAIL_USERNAME
+        msg['To'] = ADMIN_EMAIL
+
+        # 使用 Gmail SMTP (Port 587 TLS)
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(MAIL_USERNAME, MAIL_PASSWORD)
+        server.sendmail(MAIL_USERNAME, [ADMIN_EMAIL], msg.as_string())
+        server.quit()
+        print(f"成功寄送通知信給 {ADMIN_EMAIL}")
+    except Exception as e:
+        print(f"寄信失敗: {e}")
 
 def init_and_clean_db():
     try:
@@ -48,6 +92,8 @@ def save_booking():
     try:
         conn = get_db()
         cur = conn.cursor()
+        
+        # 檢查時段重疊
         cur.execute("""
             SELECT id FROM bookings 
             WHERE id != %s 
@@ -75,6 +121,7 @@ def save_booking():
             """, (data.get('title'), data.get('applicant'), data.get('empId'), data.get('dept'),
                   data.get('startDate'), data.get('startTime'), data.get('endDate'), data.get('endTime'), data.get('remarks'), data.get('id')))
             msg = '✅ 預約變更成功！'
+            action_type = '變更預約'
         else:
             cur.execute("""
                 INSERT INTO bookings (id, title, applicant, emp_id, dept, start_date, start_time, end_date, end_time, remarks)
@@ -82,10 +129,15 @@ def save_booking():
             """, (data.get('id'), data.get('title'), data.get('applicant'), data.get('empId'), data.get('dept'),
                   data.get('startDate'), data.get('startTime'), data.get('endDate'), data.get('endTime'), data.get('remarks')))
             msg = '✅ 會議室預約登記成功！'
+            action_type = '新增登記'
 
         conn.commit()
         cur.close()
         conn.close()
+
+        # 觸發背景 Email 通知
+        send_notification_email(action_type, data)
+
         return jsonify({'success': True, 'message': msg})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -98,7 +150,7 @@ def delete_booking():
     try:
         conn = get_db()
         cur = conn.cursor()
-        cur.execute("SELECT emp_id FROM bookings WHERE id = %s;", (booking_id,))
+        cur.execute("SELECT title, applicant, dept, start_date::text as \"startDate\", start_time as \"startTime\", end_date::text as \"endDate\", end_time as \"endTime\", remarks, emp_id FROM bookings WHERE id = %s;", (booking_id,))
         row = cur.fetchone()
         if not row:
             return jsonify({'success': False, 'message': '❌ 找不到該筆預約紀錄！'})
@@ -108,6 +160,9 @@ def delete_booking():
             conn.commit()
             msg = '✅ 預約紀錄已成功撤銷！'
             success = True
+            
+            # 寄送撤销通知
+            send_notification_email('撤銷預約', dict(row))
         else:
             msg = '❌ 員工編號驗證失敗！無法撤銷預約。'
             success = False
@@ -117,60 +172,6 @@ def delete_booking():
         return jsonify({'success': success, 'message': msg})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
-
-@app.route('/calendar.ics', methods=['GET'])
-def get_calendar():
-    try:
-        conn = get_db()
-        cur = conn.cursor()
-        cur.execute("SELECT id, title, applicant, dept, start_date::text as \"startDate\", start_time as \"startTime\", end_date::text as \"endDate\", end_time as \"endTime\", remarks FROM bookings;")
-        rows = cur.fetchall()
-        cur.close()
-        conn.close()
-
-        ics_lines = [
-            "BEGIN:VCALENDAR",
-            "VERSION:2.0",
-            "PRODID:-//CPC//315 Room//ZH",
-            "CALSCALE:GREGORIAN",
-            "METHOD:PUBLISH",
-            "X-WR-CALNAME:315會議室登記情形",
-            "X-WR-TIMEZONE:Asia/Taipei",
-            "BEGIN:VTIMEZONE",
-            "TZID:Asia/Taipei",
-            "X-LIC-LOCATION:Asia/Taipei",
-            "BEGIN:STANDARD",
-            "TZOFFSETFROM:+0800",
-            "TZOFFSETTO:+0800",
-            "TZNAME:CST",
-            "DTSTART:19700101T000000",
-            "END:STANDARD",
-            "END:VTIMEZONE"
-        ]
-
-        for b in rows:
-            try:
-                s_str = f"{b['startDate']} {b['startTime']}"
-                e_str = f"{b['endDate']} {b['endTime']}"
-                s_dt = datetime.strptime(s_str, "%Y-%m-%d %H:%M").strftime("%Y%m%dT%H%M00")
-                e_dt = datetime.strptime(e_str, "%Y-%m-%d %H:%M").strftime("%Y%m%dT%H%M00")
-                
-                ics_lines.append("BEGIN:VEVENT")
-                ics_lines.append(f"UID:{b['id']}@three15-meeting")
-                ics_lines.append(f"DTSTART;TZID=Asia/Taipei:{s_dt}")
-                ics_lines.append(f"DTEND;TZID=Asia/Taipei:{e_dt}")
-                ics_lines.append(f"SUMMARY:【315會議室】{b['title']} - {b['applicant']}")
-                ics_lines.append(f"DESCRIPTION:登記人：{b['applicant']} (單位：{b['dept'] or '無'}) 備註：{b['remarks'] or '無'}")
-                ics_lines.append("LOCATION:工安處南部辦公室 315 會議室")
-                ics_lines.append("END:VEVENT")
-            except Exception:
-                continue
-
-        ics_lines.append("END:VCALENDAR")
-        response_text = "\r\n".join(ics_lines)
-        return Response(response_text, mimetype="text/calendar", headers={"Content-Disposition": "inline; filename=calendar.ics"})
-    except Exception as e:
-        return str(e), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))

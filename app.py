@@ -95,22 +95,25 @@ def save_booking():
         conn = get_db()
         cur = conn.cursor()
         
-        # 衝突檢查
+        booking_id = data.get('id')
+        is_update = data.get('isUpdate', False)
+
+        # 衝突檢查邏輯（排除自身 ID）
         cur.execute("""
             SELECT id FROM bookings 
             WHERE id != ? 
               AND start_date <= ? AND end_date >= ?
               AND NOT (end_time <= ? OR start_time >= ?);
-        """, (data.get('id'), data.get('endDate'), data.get('startDate'), data.get('startTime'), data.get('endTime')))
+        """, (booking_id, data.get('endDate'), data.get('startDate'), data.get('startTime'), data.get('endTime')))
         
         if cur.fetchone():
             conn.close()
             return jsonify({'success': False, 'message': '❌ 該時段已被預約，請選擇其他時間！'})
 
-        if data.get('isUpdate'):
-            cur.execute("SELECT emp_id FROM bookings WHERE id = ?;", (data.get('id'),))
+        if is_update:
+            cur.execute("SELECT emp_id FROM bookings WHERE id = ?;", (booking_id,))
             target = cur.fetchone()
-            if not target or (data.get('empId') != '746878' and data.get('empId') != target['emp_id']):
+            if not target or (data.get('empId') != '746878' and data.get('empId') != dict(target)['emp_id']):
                 conn.close()
                 return jsonify({'success': False, 'message': '❌ 員工編號驗證失敗！無法變更。'})
 
@@ -119,14 +122,14 @@ def save_booking():
                 SET title=?, applicant=?, emp_id=?, dept=?, start_date=?, start_time=?, end_date=?, end_time=?, remarks=?
                 WHERE id=?;
             """, (data.get('title'), data.get('applicant'), data.get('empId'), data.get('dept'),
-                  data.get('startDate'), data.get('startTime'), data.get('endDate'), data.get('endTime'), data.get('remarks'), data.get('id')))
+                  data.get('startDate'), data.get('startTime'), data.get('endDate'), data.get('endTime'), data.get('remarks'), booking_id))
             msg = '✅ 預約變更成功！'
             action_type = '變更預約'
         else:
             cur.execute("""
                 INSERT INTO bookings (id, title, applicant, emp_id, dept, start_date, start_time, end_date, end_time, remarks)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-            """, (data.get('id'), data.get('title'), data.get('applicant'), data.get('empId'), data.get('dept'),
+            """, (booking_id, data.get('title'), data.get('applicant'), data.get('empId'), data.get('dept'),
                   data.get('startDate'), data.get('startTime'), data.get('endDate'), data.get('endTime'), data.get('remarks')))
             msg = '✅ 會議室預約登記成功！'
             action_type = '新增登記'

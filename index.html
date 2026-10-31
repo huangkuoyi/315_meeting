@@ -10,68 +10,93 @@
         body { background-color: #f4f6f9; font-family: "Microsoft JhengHei", sans-serif; }
         .card-custom { border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: none; }
         .header-bg { background: linear-gradient(135deg, #0d6efd, #0a58ca); color: white; border-radius: 12px 12px 0 0; padding: 20px; }
-        .table-hover tbody tr:hover { background-color: #f1f5f9; }
         .div-input-box {
             display: block; width: 100%; padding: 0.375rem 0.75rem; font-size: 1rem; color: #212529; background-color: #fff; border: 1px solid #ced4da; border-radius: 0.375rem; min-height: 38px; outline: none;
         }
         .div-input-box.masked { -webkit-text-security: disc !important; text-security: disc !important; }
-        .stat-card { background: #ffffff; border-left: 4px solid #0d6efd; border-radius: 8px; padding: 15px; }
+        
+        /* 24小時時段網格卡片樣式 */
+        .grid-24h {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(85px, 1fr));
+            gap: 10px;
+        }
+        .slot-card {
+            border-radius: 8px;
+            padding: 8px 4px;
+            text-align: center;
+            font-size: 0.85rem;
+            border: 1px solid #d1e7dd;
+            background-color: #f8f9fa;
+            transition: all 0.2s;
+        }
+        .slot-card.available {
+            background-color: #e8f5e9;
+            border-color: #a5d6a7;
+            color: #2e7d32;
+        }
+        .slot-card.booked {
+            background-color: #ffebee;
+            border-color: #ef9a9a;
+            color: #c62828;
+            font-weight: bold;
+        }
+        
+        /* 手機版適應排版 */
+        @media (max-width: 768px) {
+            .grid-24h {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 6px;
+            }
+            .slot-card {
+                padding: 6px 2px;
+                font-size: 0.75rem;
+            }
+            .header-bg {
+                padding: 15px;
+            }
+        }
     </style>
 </head>
-<body class="py-4">
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-lg-10">
-                <!-- 標題 -->
-                <div class="card card-custom mb-4">
-                    <div class="header-bg d-flex justify-content-between align-items-center flex-wrap">
-                        <div>
-                            <h3 class="mb-1"><i class="bi bi-building-gear me-2"></i>工安處南部辦公室</h3>
-                            <h5 class="mb-0">會議室 (315) 使用登記系統</h5>
+<body class="py-3 py-md-4">
+    <div class="container-fluid container-lg">
+        <!-- 頂部標題區 -->
+        <div class="card card-custom mb-4">
+            <div class="header-bg d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                    <h3 class="mb-1 h4-md fw-bold"><i class="bi bi-building-gear me-2"></i>工安處南部辦公室 會議室(315)使用登記系統</h3>
+                    <div class="small opacity-75">內部網路雙向即時同步 (24HR 全日開放)</div>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-light btn-sm text-primary fw-bold" onclick="exportCSV()"><i class="bi bi-file-earmark-excel me-1"></i>匯出紀錄 (CSV)</button>
+                </div>
+            </div>
+            
+            <div class="card-body p-3 p-md-4">
+                <div class="row g-4">
+                    <!-- 左側：新增會議預約登記表單 -->
+                    <div class="col-lg-5">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="card-title text-primary mb-0 fw-bold"><i class="bi bi-pencil-square me-2"></i>新增會議預約登記</h5>
+                            <span class="badge bg-success"><i class="bi bi-clock me-1"></i>24小時開放預約</span>
                         </div>
-                        <div>
-                            <button class="btn btn-light btn-sm text-primary fw-bold" onclick="exportCSV()"><i class="bi bi-file-earmark-excel me-1"></i>匯出年度紀錄 (CSV)</button>
-                        </div>
-                    </div>
-                    <div class="card-body p-4">
-                        <!-- 年度統計看板 -->
-                        <div class="row mb-4 g-3">
-                            <div class="col-md-4">
-                                <div class="stat-card shadow-sm">
-                                    <div class="text-muted small">本年度總登記次數</div>
-                                    <div class="h3 fw-bold text-primary mb-0" id="statTotal">0 次</div>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="stat-card shadow-sm" style="border-left-color: #198754;">
-                                    <div class="text-muted small">熱門使用單位</div>
-                                    <div class="h5 fw-bold text-success mb-0" id="statTopDept">讀取中...</div>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="stat-card shadow-sm" style="border-left-color: #ffc107;">
-                                    <div class="text-muted small">未來預約登記</div>
-                                    <div class="h3 fw-bold text-warning mb-0" id="statUpcoming">0 筆</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <h5 class="card-title text-primary mb-3"><i class="bi bi-pencil-square me-2"></i>預約登記表單</h5>
+                        
                         <form id="bookingForm" action="javascript:void(0);" autocomplete="off">
                             <input type="hidden" id="bookingId">
                             <input type="hidden" id="isUpdate" value="false">
                             
-                            <div class="row g-3">
-                                <div class="col-md-6">
-                                    <label class="form-label fw-bold">會議事由 / 名稱 <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="title" placeholder="例如：PSM 審查會議" required>
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label fw-bold">登記人姓名 <span class="text-danger">*</span></label>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold small">會議名稱 / 事由 <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="title" placeholder="例如：跨部門週報會議" required>
+                            </div>
+                            
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <label class="form-label fw-bold small">申請人姓名 <span class="text-danger">*</span></label>
                                     <input type="text" class="form-control" id="applicant" placeholder="黃國益" required>
                                 </div>
-                                <div class="col-md-3">
-                                    <label class="form-label fw-bold">員工編號 <span class="text-danger">*</span></label>
+                                <div class="col-6">
+                                    <label class="form-label fw-bold small">員工編號 <span class="text-danger">*</span></label>
                                     <div class="input-group">
                                         <div id="userCodeBox" class="div-input-box masked" contenteditable="true" role="textbox"></div>
                                         <button class="btn btn-outline-secondary" type="button" id="toggleEmpId">
@@ -79,87 +104,110 @@
                                         </button>
                                     </div>
                                 </div>
+                            </div>
 
-                                <div class="col-md-6">
-                                    <label class="form-label">所屬部門 / 單位</label>
-                                    <input type="text" class="form-control" id="dept" placeholder="例如：工業安全衛生處">
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <label class="form-label fw-bold small">所屬部門 / 單位</label>
+                                    <input type="text" class="form-control" id="dept" placeholder="工安處">
                                 </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">備註事項</label>
-                                    <input type="text" class="form-control" id="remarks" placeholder="如需投影機、茶水等需求">
+                                <div class="col-6">
+                                    <label class="form-label fw-bold small">備註事項</label>
+                                    <input type="text" class="form-control" id="remarks" placeholder="投影機需求">
                                 </div>
+                            </div>
 
-                                <div class="col-md-3">
-                                    <label class="form-label fw-bold">開始日期 <span class="text-danger">*</span></label>
-                                    <input type="date" class="form-control" id="startDate" required>
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <label class="form-label fw-bold small">開始日期 <span class="text-danger">*</span></label>
+                                    <input type="date" class="form-control" id="startDate" required onchange="syncCurrentDate(this.value)">
                                 </div>
-                                <div class="col-md-3">
-                                    <label class="form-label fw-bold">開始時間 (24HR) <span class="text-danger">*</span></label>
+                                <div class="col-6">
+                                    <label class="form-label fw-bold small">開始時間 <span class="text-danger">*</span></label>
                                     <input type="time" class="form-control" id="startTime" required>
                                 </div>
-                                <div class="col-md-3">
-                                    <label class="form-label fw-bold">結束日期 <span class="text-danger">*</span></label>
+                            </div>
+
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <label class="form-label fw-bold small">結束日期 <span class="text-danger">*</span></label>
                                     <input type="date" class="form-control" id="endDate" required>
                                 </div>
-                                <div class="col-md-3">
-                                    <label class="form-label fw-bold">結束時間 (24HR) <span class="text-danger">*</span></label>
+                                <div class="col-6">
+                                    <label class="form-label fw-bold small">結束時間 <span class="text-danger">*</span></label>
                                     <input type="time" class="form-control" id="endTime" required>
                                 </div>
                             </div>
 
                             <div class="mt-4 text-end">
-                                <button type="button" class="btn btn-secondary me-2" onclick="resetForm()">重設清空</button>
-                                <button type="submit" class="btn btn-primary px-4" id="btnSubmit">確認送出登記</button>
+                                <button type="button" class="btn btn-secondary me-2 btn-sm" onclick="resetForm()">重設清空</button>
+                                <button type="submit" class="btn btn-primary btn-sm px-3" id="btnSubmit">確認送出登記</button>
                             </div>
                         </form>
                     </div>
-                </div>
 
-                <!-- 檢視表 -->
-                <div class="card card-custom">
-                    <div class="card-body p-4">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h5 class="card-title text-primary mb-0"><i class="bi bi-calendar3 me-2"></i>即時預約檢視表</h5>
-                            <button class="btn btn-outline-danger btn-sm" onclick="triggerCleanOld()"><i class="bi bi-trash3 me-1"></i>清理舊紀錄</button>
+                    <!-- 右側：當日 24 小時登記檢視表 (含日期跳選按鈕與 24H 網格) -->
+                    <div class="col-lg-7">
+                        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                            <h5 class="card-title text-primary mb-0 fw-bold"><i class="bi bi-calendar-week me-2"></i>當日 24 小時登記檢視表</h5>
+                            <!-- 日期跳選按鍵 -->
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button type="button" class="btn btn-outline-primary" onclick="shiftDate(-1)"><i class="bi bi-chevron-left"></i> 前一日</button>
+                                <button type="button" class="btn btn-primary" onclick="goToday()">今日</button>
+                                <button type="button" class="btn btn-outline-primary" onclick="shiftDate(1)">後一日 <i class="bi bi-chevron-right"></i></button>
+                            </div>
                         </div>
+
+                        <!-- 目前檢視日期提示 -->
+                        <div class="alert alert-light border py-2 px-3 mb-3 d-flex justify-content-between align-items-center">
+                            <span class="fw-bold text-secondary" id="viewingDateStr">日期：2026-10-31</span>
+                            <span class="badge bg-info text-dark" id="dayBookingCount">當日預約：0 筆</span>
+                        </div>
+
+                        <!-- 24 小時網格圖卡 -->
+                        <div class="grid-24h mb-4" id="slotsContainer">
+                            <!-- 24個時段會由 JS 動態渲染 -->
+                        </div>
+
+                        <!-- 當日詳細預約清單 -->
+                        <h6 class="fw-bold text-secondary mb-2"><i class="bi bi-list-task me-1"></i>當日詳細登記清單</h6>
                         <div class="table-responsive">
-                            <table class="table table-hover align-middle">
+                            <table class="table table-sm table-hover align-middle border">
                                 <thead class="table-light">
-                                    <tr>
-                                        <th>預約時間區段</th>
-                                        <th>會議事由</th>
+                                    <tr class="small">
+                                        <th>時段</th>
+                                        <th>會議名稱</th>
                                         <th>登記人 (單位)</th>
-                                        <th>備註</th>
                                         <th class="text-center">操作</th>
                                     </tr>
                                 </thead>
-                                <tbody id="bookingTableBody">
-                                    <tr><td colspan="5" class="text-center text-muted">讀取中...</td></tr>
+                                <tbody id="dayListBody">
+                                    <tr><td colspan="4" class="text-center text-muted small py-3">載入中...</td></tr>
                                 </tbody>
                             </table>
                         </div>
                     </div>
-                </div>
 
+                </div>
             </div>
         </div>
     </div>
 
     <!-- 驗證員編彈窗 -->
     <div class="modal fade" id="verifyModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">身份驗證</h5>
+                <div class="modal-header py-2">
+                    <h6 class="modal-title fw-bold">身份驗證</h6>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p id="verifyMsg">請輸入您的員工編號以執行此操作：</p>
+                    <p class="small mb-2">請輸入您的員工編號以執行操作：</p>
                     <div id="verifyUserCodeBox" class="div-input-box masked" contenteditable="true" role="textbox"></div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="button" class="btn btn-danger" id="btnConfirmAction">確認執行</button>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-sm btn-danger" id="btnConfirmAction">確認執行</button>
                 </div>
             </div>
         </div>
@@ -169,6 +217,7 @@
     <script>
         let currentTargetId = '';
         let allBookingsCache = [];
+        let currentDateVal = new Date().toISOString().split('T')[0];
 
         document.addEventListener('DOMContentLoaded', () => {
             initDefaultDateTime();
@@ -187,11 +236,41 @@
         });
 
         function initDefaultDateTime() {
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('startDate').value = today;
-            document.getElementById('endDate').value = today;
+            document.getElementById('startDate').value = currentDateVal;
+            document.getElementById('endDate').value = currentDateVal;
             document.getElementById('startTime').value = "08:00";
             document.getElementById('endTime').value = "09:00";
+            updateViewingDateDisplay();
+        }
+
+        function updateViewingDateDisplay() {
+            document.getElementById('viewingDateStr').innerText = '檢視日期：' + currentDateVal;
+        }
+
+        function syncCurrentDate(val) {
+            if(val) {
+                currentDateVal = val;
+                updateViewingDateDisplay();
+                renderDayView();
+            }
+        }
+
+        function shiftDate(days) {
+            const d = new Date(currentDateVal);
+            d.setDate(d.getDate() + days);
+            currentDateVal = d.toISOString().split('T')[0];
+            document.getElementById('startDate').value = currentDateVal;
+            document.getElementById('endDate').value = currentDateVal;
+            updateViewingDateDisplay();
+            renderDayView();
+        }
+
+        function goToday() {
+            currentDateVal = new Date().toISOString().split('T')[0];
+            document.getElementById('startDate').value = currentDateVal;
+            document.getElementById('endDate').value = currentDateVal;
+            updateViewingDateDisplay();
+            renderDayView();
         }
 
         function loadBookings() {
@@ -200,48 +279,58 @@
                 .then(data => {
                     if (data.success) {
                         allBookingsCache = data.bookings;
-                        renderTable(data.bookings);
-                        updateStats(data.bookings);
+                        renderDayView();
                     }
                 });
         }
 
-        function updateStats(bookings) {
-            document.getElementById('statTotal').textContent = bookings.length + ' 次';
-            const today = new Date().toISOString().split('T')[0];
-            const upcoming = bookings.filter(b => b.startDate >= today);
-            document.getElementById('statUpcoming').textContent = upcoming.length + ' 筆';
+        function renderDayView() {
+            const dayBookings = allBookingsCache.filter(b => b.startDate <= currentDateVal && b.endDate >= currentDateVal);
+            document.getElementById('dayBookingCount').innerText = `當日預約：${dayBookings.length} 筆`;
 
-            const deptCounts = {};
-            bookings.forEach(b => {
-                const d = b.dept || '未填寫';
-                deptCounts[d] = (deptCounts[d] || 0) + 1;
-            });
-            let topDept = '尚無資料', maxC = 0;
-            for(let d in deptCounts) {
-                if(deptCounts[d] > maxC) { maxC = deptCounts[d]; topDept = d; }
+            // 渲染 24 小時時段網格
+            const slotsContainer = document.getElementById('slotsContainer');
+            let slotsHtml = '';
+            for (let h = 0; h < 24; h++) {
+                const timeStr = (h < 10 ? '0' + h : h) + ':00';
+                const nextTimeStr = ((h + 1) < 10 ? '0' + (h + 1) : (h + 1)) + ':00';
+                
+                // 檢查該小時是否有被預約
+                const isBooked = dayBookings.some(b => {
+                    return !(b.endTime <= timeStr || b.startTime >= nextTimeStr);
+                });
+
+                if (isBooked) {
+                    slotsHtml += `
+                        <div class="slot-card booked">
+                            <div>${timeStr}</div>
+                            <div><i class="bi bi-x-circle me-1"></i>已預約</div>
+                        </div>`;
+                } else {
+                    slotsHtml += `
+                        <div class="slot-card available">
+                            <div>${timeStr}</div>
+                            <div><i class="bi bi-check-circle me-1"></i>可登記</div>
+                        </div>`;
+                }
             }
-            document.getElementById('statTopDept').textContent = topDept + (maxC > 0 ? ` (${maxC}次)` : '');
-        }
+            slotsContainer.innerHTML = slotsHtml;
 
-        function renderTable(bookings) {
-            const tbody = document.getElementById('bookingTableBody');
-            if (!bookings || bookings.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">目前尚無預約登記紀錄</td></tr>';
+            // 渲染當日詳細清單
+            const dayListBody = document.getElementById('dayListBody');
+            if (dayBookings.length === 0) {
+                dayListBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted small py-3">當日無預約登記紀錄</td></tr>';
                 return;
             }
-            tbody.innerHTML = bookings.map(b => `
+
+            dayListBody.innerHTML = dayBookings.map(b => `
                 <tr>
-                    <td>
-                        <span class="badge bg-primary me-1">${b.startDate}</span> ${b.startTime} <br>
-                        <span class="badge bg-secondary me-1">${b.endDate}</span> ${b.endTime}
-                    </td>
+                    <td class="small fw-bold text-primary">${b.startTime} - ${b.endTime}</td>
                     <td class="fw-bold">${b.title}</td>
-                    <td>${b.applicant} ${b.dept ? `(${b.dept})` : ''}</td>
-                    <td>${b.remarks || '-'}</td>
+                    <td class="small">${b.applicant} ${b.dept ? `(${b.dept})` : ''}</td>
                     <td class="text-center">
-                        <button class="btn btn-sm btn-outline-warning me-1" onclick="prepareUpdate('${b.id}')">變更</button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="prepareDelete('${b.id}')">撤銷</button>
+                        <button class="btn btn-xs btn-outline-warning py-0 px-1 me-1" style="font-size: 0.75rem;" onclick="prepareUpdate('${b.id}')">變更</button>
+                        <button class="btn btn-xs btn-outline-danger py-0 px-1" style="font-size: 0.75rem;" onclick="prepareDelete('${b.id}')">撤銷</button>
                     </td>
                 </tr>
             `).join('');
@@ -291,13 +380,6 @@
             link.click();
         }
 
-        function triggerCleanOld() {
-            if(confirm('是否執行資料庫清理（將自動移除過期超過半年的歷史紀錄）？')) {
-                loadBookings();
-                alert('舊紀錄維護清理完成！');
-            }
-        }
-
         function prepareUpdate(id) {
             const b = allBookingsCache.find(item => item.id === id);
             if (b) {
@@ -313,7 +395,7 @@
                 document.getElementById('endTime').value = b.endTime;
                 document.getElementById('remarks').value = b.remarks || '';
                 document.getElementById('btnSubmit').textContent = '確認變更預約';
-                document.getElementById('btnSubmit').className = 'btn btn-warning px-4';
+                document.getElementById('btnSubmit').className = 'btn btn-warning btn-sm px-3';
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             }
         }
@@ -349,7 +431,7 @@
             document.getElementById('isUpdate').value = 'false';
             document.getElementById('userCodeBox').innerText = '';
             document.getElementById('btnSubmit').textContent = '確認送出登記';
-            document.getElementById('btnSubmit').className = 'btn btn-primary px-4';
+            document.getElementById('btnSubmit').className = 'btn btn-primary btn-sm px-3';
             initDefaultDateTime();
         }
     </script>
